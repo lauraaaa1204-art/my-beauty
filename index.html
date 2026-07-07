@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面部医美百科 — 交互式医美科普平台</title>
+<style>
+
+/* ====== CSS Variables & Reset ====== */
+:root {
+  --bg: #0f0f1a;
+  --bg-card: #1a1a2e;
+  --bg-panel: #16162a;
+  --text: #e0e0e0;
+  --text-dim: #888;
+  --text-bright: #fff;
+  --border: #2a2a40;
+  --red: #e94560;
+  --green: #16c79a;
+  --yellow: #f4a261;
+  --orange: #ff6b35;
+  --coral: #ff7b89;
+  --teal: #2ec4b6;
+  --purple: #9b59b6;
+  --blue: #4ea8de;
+  --accent: #6c63ff;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+  --font: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:16px; scroll-behavior:smooth; }
+body {
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+a { color:var(--accent); text-decoration:none; }
+
+/* ====== Scrollbar ====== */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* ====== Navigation ====== */
+.nav {
+  position:sticky; top:0; z-index:100;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 32px; height:60px;
+  background:rgba(15,15,26,0.92);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo {
+  font-size:1.2rem; font-weight:700; color:var(--text-bright);
+  display:flex; align-items:center; gap:8px;
+}
+.nav-logo span { color:var(--accent); }
+.nav-links { display:flex; gap:4px; list-style:none; }
+.nav-links button {
+  background:none; border:none; color:var(--text-dim);
+  padding:8px 18px; border-radius:var(--radius-sm);
+  cursor:pointer; font-size:0.9rem; font-family:var(--font);
+  transition:var(--transition); white-space:nowrap;
+}
+.nav-links button:hover { color:var(--text-bright); background:rgba(255,255,255,0.05); }
+.nav-links button.active { color:var(--text-bright); background:var(--accent); }
+
+
+.nav-mobile-toggle {
+  display:none; background:none; border:none; color:var(--text);
+  font-size:1.5rem; cursor:pointer; padding:4px;
+}
+
+/* ====== Warning Banner ====== */
+.warning-banner {
+  background:linear-gradient(135deg, rgba(233,69,96,0.15), rgba(244,162,97,0.1));
+  border-bottom:1px solid rgba(233,69,96,0.3);
+  padding:10px 32px; font-size:0.8rem; color:var(--text-dim);
+  text-align:center;
+}
+.warning-banner span { color:var(--red); margin-right:6px; }
+
+/* ====== Main Layout ====== */
+.main-container {
+  display:flex; height:calc(100vh - 60px - 41px);
+  max-width:1440px; margin:0 auto;
+}
+.face-panel {
+  width:42%; min-width:380px; max-width:560px;
+  display:flex; align-items:center; justify-content:center;
+  padding:24px; position:relative;
+  border-right:1px solid var(--border);
+}
+.detail-panel {
+  flex:1; overflow-y:auto; padding:24px 32px;
+  background:var(--bg-panel);
+}
+
+/* ====== SVG Face Map ====== */
+.face-svg-wrap { position:relative; width:100%; max-width:420px; }
+.face-svg-wrap svg { width:100%; height:auto; display:block; }
+
+/* Photo mode */
+.face-photo-container {
+  position:relative; width:100%; max-width:420px;
+  aspect-ratio:1122/1402; overflow:hidden; border-radius:var(--radius);
+  box-shadow:0 0 40px rgba(108,99,255,0.12);
+}
+.face-photo-container img {
+  width:100%; height:100%; object-fit:cover; display:block;
+}
+.face-photo-container svg {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  pointer-events:none;
+}
+.face-photo-container svg .hotspot-group,
+.face-photo-container svg .pulse-dot { pointer-events:auto; }
+
+.mode-toggle {
+  position:absolute; top:12px; right:12px; z-index:10;
+  display:flex; gap:2px; background:rgba(0,0,0,0.5);
+  border-radius:20px; padding:3px; backdrop-filter:blur(8px);
+}
+.mode-toggle button {
+  padding:5px 12px; border-radius:17px; border:none;
+  font-size:0.72rem; cursor:pointer; font-family:var(--font);
+  background:transparent; color:var(--text-dim); transition:var(--transition);
+}
+.mode-toggle button.active { background:var(--accent); color:#fff; }
+
+/* Photo hotspot pulse - larger for photo overlay */
+.photo-pulse {
+  animation:photoPulse 2.2s ease-in-out infinite;
+}
+@keyframes photoPulse {
+  0%,100% { r:12; opacity:0.7; }
+  50% { r:30; opacity:0; }
+}
+.photo-glow {
+  transition: opacity 0.3s ease;
+}
+.photo-glow:hover { opacity:1 !important; }
+
+/* Hotspot pulse animation */
+@keyframes pulse-red {
+  0%,100% { r:8; opacity:0.5; }
+  50% { r:18; opacity:0; }
+}
+@keyframes pulse-orange {
+  0%,100% { r:8; opacity:0.5; }
+  50% { r:18; opacity:0; }
+}
+@keyframes pulse-coral {
+  0%,100% { r:8; opacity:0.5; }
+  50% { r:18; opacity:0; }
+}
+@keyframes pulse-teal {
+  0%,100% { r:8; opacity:0.5; }
+  50% { r:18; opacity:0; }
+}
+@keyframes pulse-purple {
+  0%,100% { r:8; opacity:0.5; }
+  50% { r:18; opacity:0; }
+}
+@keyframes pulse-blue {
+  0%,100% { r:8; opacity:0.5; }
+  50% { r:18; opacity:0; }
+}
+.pulse-dot { cursor:pointer; transition:var(--transition); }
+.pulse-dot.red { animation:pulse-red 2.2s ease-in-out infinite; fill:var(--red); }
+.pulse-dot.orange { animation:pulse-orange 2.4s ease-in-out infinite; fill:var(--orange); }
+.pulse-dot.coral { animation:pulse-coral 2.0s ease-in-out infinite; fill:var(--coral); }
+.pulse-dot.teal { animation:pulse-teal 2.6s ease-in-out infinite; fill:var(--teal); }
+.pulse-dot.purple { animation:pulse-purple 2.3s ease-in-out infinite; fill:var(--purple); }
+.pulse-dot.blue { animation:pulse-blue 2.5s ease-in-out infinite; fill:var(--blue); }
+
+.hotspot-zone { cursor:pointer; transition:all 0.3s ease; }
+.hotspot-zone:hover { filter:brightness(1.3); }
+.hotspot-zone.active { filter:brightness(1.2); }
+
+.hotspot-label {
+  font-size:13px; fill:var(--text-bright); font-weight:600;
+  pointer-events:none; opacity:0; transition:opacity 0.3s;
+  font-family:var(--font);
+}
+.hotspot-zone:hover + .hotspot-label,
+.hotspot-group:hover .hotspot-label { opacity:1; }
+
+/* ====== Detail Panel ====== */
+.panel-header { margin-bottom:24px; }
+.panel-region-name { font-size:1.6rem; font-weight:700; color:var(--text-bright); margin-bottom:4px; }
+.panel-region-desc { font-size:0.9rem; color:var(--text-dim); }
+.hum-jump-btn {
+  display:inline-block; margin-top:12px; padding:8px 18px;
+  border-radius:20px; border:1px solid var(--red); background:rgba(233,69,96,0.08);
+  color:var(--red); cursor:pointer; font-size:0.82rem; font-family:var(--font);
+  transition:var(--transition);
+}
+.hum-jump-btn:hover { background:rgba(233,69,96,0.18); border-color:var(--red); box-shadow:0 0 16px rgba(233,69,96,0.15); }
+
+.filter-tags { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; }
+.filter-tag {
+  padding:6px 16px; border-radius:20px; font-size:0.82rem; cursor:pointer;
+  border:1px solid var(--border); background:transparent; color:var(--text-dim);
+  font-family:var(--font); transition:var(--transition);
+}
+.filter-tag:hover { border-color:var(--text-dim); color:var(--text); }
+.filter-tag.active { border-color:transparent; color:#fff; }
+.filter-tag.active.surgery { background:var(--red); }
+.filter-tag.active.injection { background:var(--green); }
+.filter-tag.active.dermatology { background:var(--yellow); color:#1a1a2e; }
+
+.procedure-count { font-size:0.82rem; color:var(--text-dim); margin-bottom:16px; }
+
+/* ====== Procedure Cards ====== */
+.procedure-cards { display:flex; flex-direction:column; gap:16px; }
+.procedure-card {
+  background:var(--bg-card); border-radius:var(--radius);
+  border:1px solid var(--border); overflow:hidden;
+  transition:var(--transition);
+}
+.procedure-card:hover { border-color:#444; box-shadow:var(--shadow); }
+
+.card-header {
+  padding:16px 20px; display:flex; align-items:flex-start;
+  justify-content:space-between; gap:12px; cursor:pointer;
+}
+.card-title-area { flex:1; }
+.card-name { font-size:1.05rem; font-weight:600; color:var(--text-bright); margin-bottom:4px; }
+.card-desc { font-size:0.85rem; color:var(--text-dim); line-height:1.5; }
+
+.card-badge {
+  padding:4px 12px; border-radius:12px; font-size:0.72rem;
+  font-weight:600; white-space:nowrap; letter-spacing:0.5px;
+}
+.badge-surgery { background:rgba(233,69,96,0.2); color:var(--red); }
+.badge-injection { background:rgba(22,199,154,0.2); color:var(--green); }
+.badge-dermatology { background:rgba(244,162,97,0.2); color:var(--yellow); }
+
+.card-body { padding:0 20px 16px; display:none; }
+.procedure-card.expanded .card-body { display:block; }
+
+.card-section { margin-top:14px; }
+.card-section-title {
+  font-size:0.78rem; font-weight:600; color:var(--text-dim);
+  text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;
+}
+
+/* Materials tags */
+.material-tags { display:flex; gap:6px; flex-wrap:wrap; }
+.material-tag {
+  padding:3px 10px; border-radius:14px; font-size:0.76rem;
+  background:rgba(108,99,255,0.15); color:#b4adff;
+  border:1px solid rgba(108,99,255,0.25);
+}
+
+/* Info row */
+.info-row { display:flex; gap:24px; flex-wrap:wrap; font-size:0.84rem; }
+.info-item { display:flex; align-items:center; gap:6px; }
+.info-icon { font-size:0.85rem; }
+.info-label { color:var(--text-dim); }
+.info-value { color:var(--text); font-weight:500; }
+
+/* Risk */
+.risk-text { font-size:0.84rem; color:var(--red); line-height:1.5; }
+
+/* Feedback dimensions */
+.feedback-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.feedback-dim {
+  background:rgba(255,255,255,0.02); border-radius:var(--radius-sm);
+  padding:12px; border-left:3px solid;
+}
+.feedback-dim.physical { border-color:var(--green); }
+.feedback-dim.expectation { border-color:var(--yellow); }
+.feedback-dim.cost { border-color:var(--red); }
+.feedback-dim-title {
+  font-size:0.78rem; font-weight:600; margin-bottom:6px;
+  display:flex; align-items:center; gap:6px;
+}
+.feedback-dim-text { font-size:0.82rem; color:var(--text-dim); line-height:1.5; }
+
+/* Humanities block */
+.humanities-block {
+  background:linear-gradient(135deg, rgba(233,69,96,0.08), rgba(233,69,96,0.02));
+  border-left:3px solid var(--red); border-radius:var(--radius-sm);
+  padding:14px 16px;
+}
+.humanities-title {
+  font-size:0.78rem; font-weight:600; color:var(--red);
+  text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;
+}
+.humanities-text { font-size:0.84rem; color:var(--text-dim); line-height:1.6; }
+.humanities-text strong { color:var(--text); }
+.humanities-ref { font-size:0.76rem; color:#666; margin-top:6px; font-style:italic; }
+
+.card-expand-icon {
+  color:var(--text-dim); font-size:1.2rem; transition:var(--transition);
+  flex-shrink:0;
+}
+.procedure-card.expanded .card-expand-icon { transform:rotate(180deg); }
+
+/* ====== Module Pages ====== */
+.module-page { display:none; padding:32px; max-width:1200px; margin:0 auto; min-height:calc(100vh - 60px - 41px); }
+.module-page.active { display:block; }
+
+.page-title { font-size:1.8rem; font-weight:700; color:var(--text-bright); margin-bottom:8px; }
+.page-desc { font-size:1rem; color:var(--text-dim); margin-bottom:32px; max-width:700px; }
+
+/* Skin map */
+.skin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:20px; }
+.skin-card {
+  background:var(--bg-card); border-radius:var(--radius); border:1px solid var(--border);
+  overflow:hidden; transition:var(--transition);
+}
+.skin-card:hover { border-color:#555; }
+.skin-card-header {
+  padding:20px; cursor:pointer; user-select:none;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.skin-card-header:hover { background:rgba(255,255,255,0.02); }
+.skin-card-title { font-size:1.1rem; font-weight:600; color:var(--text-bright); }
+.skin-card-subtitle { font-size:0.82rem; color:var(--text-dim); margin-top:4px; }
+.skin-card-arrow { color:var(--text-dim); font-size:1.1rem; transition:var(--transition); flex-shrink:0; }
+.skin-card-dot {
+  display:inline-block; width:16px; height:16px; border-radius:50%;
+  margin-right:10px; flex-shrink:0; position:relative;
+  animation:skinDotPulse 2s ease-in-out infinite;
+}
+.skin-card-dot::after {
+  content:''; position:absolute; top:-4px; left:-4px;
+  width:24px; height:24px; border-radius:50%; border:2px solid;
+  animation:skinDotRing 2s ease-in-out infinite;
+}
+@keyframes skinDotPulse {
+  0%,100% { transform:scale(1); opacity:0.8; }
+  50% { transform:scale(1.25); opacity:1; }
+}
+@keyframes skinDotRing {
+  0%,100% { transform:scale(1); opacity:0.5; }
+  50% { transform:scale(1.5); opacity:0; }
+}
+.skin-card-dot.wrinkle { background:#f4a261; }
+.skin-card-dot.wrinkle::after { border-color:#f4a261; }
+.skin-card-dot.acne { background:#e94560; }
+.skin-card-dot.acne::after { border-color:#e94560; }
+.skin-card-dot.spots { background:#9b59b6; }
+.skin-card-dot.spots::after { border-color:#9b59b6; }
+.skin-card-dot.pores { background:#4ea8de; }
+.skin-card-dot.pores::after { border-color:#4ea8de; }
+.skin-card-dot.dark { background:#2ec4b6; }
+.skin-card-dot.dark::after { border-color:#2ec4b6; }
+.skin-card-dot.neck { background:#6c63ff; }
+.skin-card-dot.neck::after { border-color:#6c63ff; }
+.skin-card.expanded .skin-card-arrow { transform:rotate(180deg); }
+.skin-card-body { display:none; padding:0 20px 20px; }
+.skin-card.expanded .skin-card-body { display:block; }
+.skin-card-desc { font-size:0.85rem; color:var(--text-dim); line-height:1.5; margin-bottom:12px; }
+.skin-card-treatments { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.skin-treatment-tag {
+  padding:3px 10px; border-radius:12px; font-size:0.74rem;
+  background:rgba(78,168,222,0.15); color:var(--blue);
+}
+.skin-feedback { margin-top:14px; }
+.skin-fb-item { font-size:0.82rem; color:var(--text-dim); line-height:1.5; margin-bottom:4px; }
+.skin-fb-item strong { color:var(--text); }
+
+/* Material library */
+.material-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; }
+.material-table-wrap { overflow-x:auto; }
+.material-table {
+  width:100%; border-collapse:collapse; font-size:0.84rem;
+}
+.material-table th {
+  text-align:left; padding:12px 16px; background:var(--bg-card);
+  color:var(--text-dim); font-weight:600; font-size:0.76rem;
+  text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;
+  border-bottom:2px solid var(--border); position:sticky; top:0;
+}
+.material-table td {
+  padding:12px 16px; border-bottom:1px solid var(--border);
+  color:var(--text); line-height:1.4;
+}
+.material-table tr:hover td { background:rgba(255,255,255,0.02); }
+.reversible-yes { color:var(--green); }
+.reversible-semi { color:var(--yellow); }
+.reversible-no { color:var(--red); }
+
+/* Material cards */
+.material-cards { display:flex; flex-direction:column; gap:12px; }
+.material-card {
+  background:var(--bg-card); border-radius:var(--radius);
+  border:1px solid var(--border); overflow:hidden;
+  transition:var(--transition);
+}
+.material-card:hover { border-color:#444; }
+.material-card-header {
+  padding:16px 20px; display:flex; align-items:center;
+  justify-content:space-between; gap:12px; cursor:pointer;
+  user-select:none;
+}
+.material-card-name {
+  font-size:1.05rem; font-weight:600; color:var(--text-bright);
+}
+.material-card-meta {
+  display:flex; align-items:center; gap:10px; flex-shrink:0;
+}
+.material-card-cat {
+  padding:3px 10px; border-radius:12px; font-size:0.72rem; font-weight:600;
+  background:rgba(108,99,255,0.15); color:#b4adff; white-space:nowrap;
+}
+.material-card-rev {
+  font-size:0.72rem; font-weight:600; white-space:nowrap;
+  padding:3px 10px; border-radius:12px;
+}
+.material-card-rev.yes { background:rgba(22,199,154,0.15); color:var(--green); }
+.material-card-rev.semi { background:rgba(244,162,97,0.15); color:var(--yellow); }
+.material-card-rev.no { background:rgba(233,69,96,0.15); color:var(--red); }
+.material-card-expand {
+  color:var(--text-dim); font-size:1.1rem; transition:var(--transition);
+  flex-shrink:0;
+}
+.material-card.expanded .material-card-expand { transform:rotate(180deg); }
+.material-card-body { display:none; padding:0 20px 20px; }
+.material-card.expanded .material-card-body { display:block; }
+
+.mat-detail-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:14px;
+}
+.mat-detail-grid .mat-detail-full { grid-column:1/-1; }
+.mat-detail-item {}
+.mat-detail-label {
+  font-size:0.74rem; font-weight:600; color:var(--text-dim);
+  text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px;
+}
+.mat-detail-value {
+  font-size:0.86rem; color:var(--text); line-height:1.5;
+}
+.mat-detail-value.pros { color:var(--green); }
+.mat-detail-value.cons { color:var(--red); }
+.mat-detail-value.contra { color:var(--yellow); }
+
+/* Humanities page */
+.essay-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+.essay-card {
+  background:var(--bg-card); border-radius:var(--radius); border:1px solid var(--border);
+  border-left:3px solid var(--red); padding:18px; transition:var(--transition);
+  cursor:pointer;
+}
+.essay-card:hover { border-color:#555; transform:translateY(-2px); }
+.essay-card-num { font-size:2rem; font-weight:800; color:rgba(233,69,96,0.12); line-height:1; margin-bottom:6px; }
+.essay-card-title { font-size:1rem; font-weight:600; color:var(--text-bright); margin-bottom:6px; line-height:1.3; }
+.essay-card-desc { font-size:0.82rem; color:var(--text-dim); line-height:1.5; }
+.essay-card .skin-card-body { display:none; }
+.essay-card.expanded .skin-card-body { display:block; }
+.essay-card .skin-card-arrow { font-size:1rem; transition:var(--transition); }
+.essay-card.expanded .skin-card-arrow { transform:rotate(180deg); }
+
+/* Humanities summary cards */
+.humanities-summary { margin-top:40px; }
+.humanities-summary h3 { font-size:1.3rem; color:var(--text-bright); margin-bottom:20px; }
+.hum-card {
+  background:var(--bg-card); border-radius:var(--radius); border:1px solid var(--border);
+  overflow:hidden; margin-bottom:10px; transition:var(--transition);
+}
+.hum-card:hover { border-color:#555; }
+.hum-card-header {
+  padding:16px 18px; cursor:pointer; user-select:none;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.hum-card-header:hover { background:rgba(255,255,255,0.02); }
+.hum-card-title { font-size:1rem; font-weight:600; color:var(--text-bright); }
+.hum-card-arrow { color:var(--text-dim); font-size:1rem; transition:var(--transition); flex-shrink:0; }
+.hum-card.expanded .hum-card-arrow { transform:rotate(180deg); }
+.hum-card-body { padding:0 18px 16px; }
+.hum-card:not(.expanded) .hum-card-body { display:none; }
+.hum-card p { font-size:0.82rem; color:var(--text-dim); line-height:1.5; margin-bottom:4px; }
+.hum-card p strong { color:var(--text); }
+
+/* ====== Eye Evolution Modal ====== */
+.modal-overlay {
+  position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.8);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity 0.3s;
+}
+.modal-overlay.open { opacity:1; pointer-events:auto; }
+.modal-content {
+  background:var(--bg-card); border-radius:var(--radius); border:1px solid var(--border);
+  max-width:900px; width:95%; max-height:90vh; overflow-y:auto;
+  padding:32px; position:relative;
+}
+.modal-close {
+  position:absolute; top:16px; right:16px;
+  background:none; border:none; color:var(--text-dim); font-size:1.5rem;
+  cursor:pointer; width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  transition:var(--transition);
+}
+.modal-close:hover { background:rgba(255,255,255,0.08); color:var(--text-bright); }
+.modal-title {
+  font-size:1.4rem; font-weight:700; color:var(--text-bright);
+  margin-bottom:6px;
+}
+.modal-subtitle {
+  font-size:0.85rem; color:var(--text-dim); margin-bottom:28px;
+}
+.evolution-timeline {
+  display:flex; flex-direction:column; gap:24px;
+}
+.evolution-era {
+  display:flex; gap:20px; align-items:flex-start;
+  background:rgba(255,255,255,0.02); border-radius:var(--radius);
+  border:1px solid var(--border); padding:20px;
+}
+.evolution-era-label {
+  flex-shrink:0; min-width:140px;
+}
+.evolution-era-name {
+  font-size:0.9rem; font-weight:700; color:var(--accent); margin-bottom:2px;
+}
+.evolution-era-time {
+  font-size:0.76rem; color:var(--text-dim);
+}
+.evolution-era-desc {
+  font-size:0.85rem; color:var(--text); line-height:1.5; margin-bottom:12px;
+}
+.evolution-era-images {
+  display:flex; gap:12px; flex-wrap:wrap;
+}
+.evolution-era-images img {
+  border-radius:8px; max-height:180px; width:auto; border:1px solid var(--border);
+}
+.evolution-era-images .img-label {
+  font-size:0.72rem; color:var(--text-dim); text-align:center; margin-top:4px;
+}
+.clickable-aesthetic {
+  border-bottom:1px dashed var(--red); cursor:pointer; transition:var(--transition);
+}
+.clickable-aesthetic:hover { color:var(--red); border-color:var(--red); }
+
+
+
+/* ====== Responsive ====== */
+@media (max-width:860px) {
+  .main-container { flex-direction:column; height:auto; }
+  .face-panel { width:100%; min-width:unset; max-width:unset; padding:16px; border-right:none; border-bottom:1px solid var(--border); }
+  .face-svg-wrap { max-width:300px; }
+  .detail-panel { padding:20px 16px; }
+  .nav { padding:0 16px; }
+  .nav-links { display:none; position:absolute; top:60px; left:0; right:0; flex-direction:column; background:var(--bg); border-bottom:1px solid var(--border); padding:8px; }
+  .nav-links.open { display:flex; }
+  .nav-mobile-toggle { display:block; }
+  .feedback-grid { grid-template-columns:1fr; }
+  .essay-grid { grid-template-columns:1fr; }
+}
+
+</style>
+</head>
+<body>
+<!-- Navigation -->
+<nav class="nav">
+  <div class="nav-logo">🧬 面部医美<span>百科</span></div>
+  <button class="nav-mobile-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+  <ul class="nav-links" id="navLinks">
+    <li><button class="active" data-module="face" onclick="switchModule('face', this)">五官轮廓</button></li>
+    <li><button data-module="skin" onclick="switchModule('skin', this)">皮肤管理</button></li>
+    <li><button data-module="materials" onclick="switchModule('materials', this)">材料库</button></li>
+    <li><button data-module="humanities" onclick="switchModule('humanities', this)">人文观察</button></li>
+    <li><button data-module="about" onclick="switchModule('about', this)">关于项目</button></li>
+  </ul>
+</nav>
+
+<!-- Warning Banner -->
+<div class="warning-banner">
+  <span>⚠️</span> 本网站仅提供医美知识科普，不构成医疗建议。任何医美项目均存在风险，请在正规医疗机构、由专业医师面诊后决策。未成年人禁止接受医美手术。
+</div>
+
+
+<!-- ==================== FACE MAP MODULE ==================== -->
+<div class="main-container module-content" id="module-face" style="display:flex">
+  <div class="face-panel">
+    <div class="face-svg-wrap">
+      <div class="mode-toggle">
+        <button class="active" data-mode="photo" onclick="switchFaceMode('photo', this)">📷 照片</button>
+        <button data-mode="illustration" onclick="switchFaceMode('illustration', this)">🎨 插图</button>
+      </div>
+      <div class="face-photo-container" id="facePhotoContainer">
+        <img src="正脸照_副本.png" alt="面部地图" id="facePhoto">
+        <svg viewBox="0 0 1122 1402" xmlns="http://www.w3.org/2000/svg" id="photoOverlay">
+          <defs>
+            <radialGradient id="pg-red"><stop offset="0%" stop-color="#e94560" stop-opacity="0.4"/><stop offset="100%" stop-color="#e94560" stop-opacity="0"/></radialGradient>
+            <radialGradient id="pg-orange"><stop offset="0%" stop-color="#ff6b35" stop-opacity="0.4"/><stop offset="100%" stop-color="#ff6b35" stop-opacity="0"/></radialGradient>
+            <radialGradient id="pg-coral"><stop offset="0%" stop-color="#ff7b89" stop-opacity="0.4"/><stop offset="100%" stop-color="#ff7b89" stop-opacity="0"/></radialGradient>
+            <radialGradient id="pg-teal"><stop offset="0%" stop-color="#2ec4b6" stop-opacity="0.4"/><stop offset="100%" stop-color="#2ec4b6" stop-opacity="0"/></radialGradient>
+            <radialGradient id="pg-purple"><stop offset="0%" stop-color="#9b59b6" stop-opacity="0.4"/><stop offset="100%" stop-color="#9b59b6" stop-opacity="0"/></radialGradient>
+            <radialGradient id="pg-blue"><stop offset="0%" stop-color="#4ea8de" stop-opacity="0.4"/><stop offset="100%" stop-color="#4ea8de" stop-opacity="0"/></radialGradient>
+          </defs>
+          <g class="hotspot-group" onclick="selectRegion('eye')">
+            <ellipse cx="430" cy="620" rx="85" ry="60" class="hotspot-zone photo-glow" fill="url(#pg-red)" stroke="#e94560" stroke-width="1.5" stroke-opacity="0" data-region="eye" opacity="0.35"/>
+            <ellipse cx="690" cy="620" rx="85" ry="60" class="hotspot-zone photo-glow" fill="url(#pg-red)" stroke="#e94560" stroke-width="1.5" stroke-opacity="0" data-region="eye" opacity="0.35"/>
+            <circle cx="430" cy="620" r="10" class="pulse-dot red photo-pulse"/><circle cx="690" cy="620" r="10" class="pulse-dot red photo-pulse"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('nose')">
+            <ellipse cx="560" cy="780" rx="55" ry="85" class="hotspot-zone photo-glow" fill="url(#pg-orange)" stroke="#ff6b35" stroke-width="1.5" stroke-opacity="0" data-region="nose" opacity="0.35"/>
+            <circle cx="560" cy="780" r="10" class="pulse-dot orange photo-pulse"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('lip')">
+            <ellipse cx="560" cy="930" rx="75" ry="40" class="hotspot-zone photo-glow" fill="url(#pg-coral)" stroke="#ff7b89" stroke-width="1.5" stroke-opacity="0" data-region="lip" opacity="0.35"/>
+            <circle cx="560" cy="930" r="10" class="pulse-dot coral photo-pulse"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('jaw')">
+            <path d="M380,1000 Q470,1060 560,1090 Q650,1060 740,1000 L720,1040 Q650,1120 560,1140 Q470,1120 400,1040 Z" class="hotspot-zone photo-glow" fill="url(#pg-teal)" stroke="#2ec4b6" stroke-width="1.5" stroke-opacity="0" data-region="jaw" opacity="0.35"/>
+            <circle cx="560" cy="1060" r="10" class="pulse-dot teal photo-pulse"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('temple')">
+            <ellipse cx="320" cy="600" rx="70" ry="55" class="hotspot-zone photo-glow" fill="url(#pg-purple)" stroke="#9b59b6" stroke-width="1.5" stroke-opacity="0" data-region="temple" opacity="0.35"/>
+            <ellipse cx="800" cy="600" rx="70" ry="55" class="hotspot-zone photo-glow" fill="url(#pg-purple)" stroke="#9b59b6" stroke-width="1.5" stroke-opacity="0" data-region="temple" opacity="0.35"/>
+            <ellipse cx="380" cy="820" rx="60" ry="65" class="hotspot-zone photo-glow" fill="url(#pg-purple)" stroke="#9b59b6" stroke-width="1.5" stroke-opacity="0" data-region="temple" opacity="0.2"/>
+            <ellipse cx="740" cy="820" rx="60" ry="65" class="hotspot-zone photo-glow" fill="url(#pg-purple)" stroke="#9b59b6" stroke-width="1.5" stroke-opacity="0" data-region="temple" opacity="0.2"/>
+            <circle cx="320" cy="600" r="8" class="pulse-dot purple photo-pulse"/><circle cx="800" cy="600" r="8" class="pulse-dot purple photo-pulse"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('neck')">
+            <rect x="430" y="1200" width="260" height="140" rx="20" class="hotspot-zone photo-glow" fill="url(#pg-blue)" stroke="#4ea8de" stroke-width="1.5" stroke-opacity="0" data-region="neck" opacity="0.35"/>
+            <circle cx="560" cy="1270" r="10" class="pulse-dot blue photo-pulse"/>
+          </g>
+        </svg>
+      </div>
+      <div class="face-photo-container" id="faceIllustrationContainer" style="display:none; aspect-ratio:auto;">
+        <svg viewBox="0 0 400 540" xmlns="http://www.w3.org/2000/svg" style="position:static;">
+          <defs>
+            <radialGradient id="glow-red"><stop offset="0%" stop-color="#e94560" stop-opacity="0.35"/><stop offset="100%" stop-color="#e94560" stop-opacity="0"/></radialGradient>
+            <radialGradient id="glow-orange"><stop offset="0%" stop-color="#ff6b35" stop-opacity="0.35"/><stop offset="100%" stop-color="#ff6b35" stop-opacity="0"/></radialGradient>
+            <radialGradient id="glow-coral"><stop offset="0%" stop-color="#ff7b89" stop-opacity="0.35"/><stop offset="100%" stop-color="#ff7b89" stop-opacity="0"/></radialGradient>
+            <radialGradient id="glow-teal"><stop offset="0%" stop-color="#2ec4b6" stop-opacity="0.35"/><stop offset="100%" stop-color="#2ec4b6" stop-opacity="0"/></radialGradient>
+            <radialGradient id="glow-purple"><stop offset="0%" stop-color="#9b59b6" stop-opacity="0.35"/><stop offset="100%" stop-color="#9b59b6" stop-opacity="0"/></radialGradient>
+            <radialGradient id="glow-blue"><stop offset="0%" stop-color="#4ea8de" stop-opacity="0.35"/><stop offset="100%" stop-color="#4ea8de" stop-opacity="0"/></radialGradient>
+            <filter id="face-shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.25"/></filter>
+          </defs>
+          <path d="M200,20 Q260,10 290,30 Q320,60 320,120 Q330,180 310,260 Q300,300 280,320 Q260,335 250,340 L240,50 Q230,25 200,20 Z" fill="#1a1a2e" stroke="none"/>
+          <path d="M200,20 Q140,10 110,30 Q80,60 80,120 Q70,180 90,260 Q100,300 120,320 Q140,335 150,340 L160,50 Q170,25 200,20 Z" fill="#1a1a2e" stroke="none"/>
+          <path d="M178,338 Q175,390 172,450 Q170,490 168,510 Q200,518 232,510 Q230,490 228,450 Q225,390 222,338" fill="#1c1c32" stroke="none"/>
+          <path d="M200,60 Q260,55 290,80 Q320,115 315,170 Q310,220 300,260 Q290,295 265,320 Q240,338 200,342 Q160,338 135,320 Q110,295 100,260 Q90,220 85,170 Q80,115 110,80 Q140,55 200,60 Z" fill="#1c1c32" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" filter="url(#face-shadow)"/>
+          <path d="M122,168 Q135,158 148,156 Q158,156 168,160" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/>
+          <path d="M232,160 Q242,156 252,156 Q265,158 278,168" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/>
+          <ellipse cx="147" cy="195" rx="28" ry="13" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+          <circle cx="147" cy="195" r="5" fill="rgba(255,255,255,0.5)"/><circle cx="149" cy="193" r="2" fill="#fff"/>
+          <ellipse cx="253" cy="195" rx="28" ry="13" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+          <circle cx="253" cy="195" r="5" fill="rgba(255,255,255,0.5)"/><circle cx="255" cy="193" r="2" fill="#fff"/>
+          <path d="M200,195 Q196,230 192,248 Q190,258 187,263 Q196,270 200,270 Q204,270 213,263 Q210,258 208,248 Q204,230 200,195" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>
+          <path d="M187,263 Q190,268 200,272 Q210,268 213,263" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+          <path d="M165,300 Q170,293 182,295 Q200,300 218,295 Q230,293 235,300" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M168,302 Q180,310 200,312 Q220,310 232,302" fill="rgba(233,69,96,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
+          <g class="hotspot-group" onclick="selectRegion('eye')">
+            <ellipse cx="147" cy="190" rx="42" ry="30" class="hotspot-zone" fill="url(#glow-red)" data-region="eye"/>
+            <ellipse cx="253" cy="190" rx="42" ry="30" class="hotspot-zone" fill="url(#glow-red)" data-region="eye"/>
+            <circle cx="147" cy="190" r="6" class="pulse-dot red"/><circle cx="253" cy="190" r="6" class="pulse-dot red"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('nose')">
+            <path d="M182,195 L218,195 L220,270 Q200,280 180,270 Z" class="hotspot-zone" fill="url(#glow-orange)" data-region="nose"/>
+            <circle cx="200" cy="252" r="6" class="pulse-dot orange"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('lip')">
+            <ellipse cx="200" cy="302" rx="48" ry="22" class="hotspot-zone" fill="url(#glow-coral)" data-region="lip"/>
+            <circle cx="200" cy="302" r="6" class="pulse-dot coral"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('jaw')">
+            <path d="M135,320 Q170,330 200,342 Q230,330 265,320 L260,350 Q230,360 200,365 Q170,360 140,350 Z" class="hotspot-zone" fill="url(#glow-teal)" data-region="jaw"/>
+            <circle cx="200" cy="348" r="6" class="pulse-dot teal"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('temple')">
+            <path d="M85,170 Q110,130 150,120 Q140,170 130,210 Q120,250 110,270 Q95,250 85,200 Z" class="hotspot-zone" fill="url(#glow-purple)" data-region="temple"/>
+            <path d="M315,170 Q290,130 250,120 Q260,170 270,210 Q280,250 290,270 Q305,250 315,200 Z" class="hotspot-zone" fill="url(#glow-purple)" data-region="temple"/>
+            <circle cx="115" cy="180" r="5" class="pulse-dot purple"/><circle cx="285" cy="180" r="5" class="pulse-dot purple"/>
+          </g>
+          <g class="hotspot-group" onclick="selectRegion('neck')">
+            <path d="M178,340 L222,340 L228,460 L172,460 Z" class="hotspot-zone" fill="url(#glow-blue)" data-region="neck"/>
+            <circle cx="200" cy="400" r="6" class="pulse-dot blue"/>
+          </g>
+          <text x="200" y="530" text-anchor="middle" fill="rgba(255,255,255,0.2)" font-size="10">点击彩色区域查看医美项目详情</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="detail-panel" id="detailPanel">
+    <div class="panel-header">
+      <div class="panel-region-name" id="regionName">👁️ 眼部区域</div>
+      <div class="panel-region-desc" id="regionDesc">点击面部不同区域探索对应的医美项目</div>
+      <button class="hum-jump-btn" id="humJumpBtn" onclick="jumpToHumanities()">🧠 查看眼部区域人文观察 →</button>
+    </div>
+    <div class="filter-tags" id="filterTags">
+      <button class="filter-tag active" data-filter="all" onclick="setFilter('all', this)">全部</button>
+      <button class="filter-tag" data-filter="surgery" onclick="setFilter('surgery', this)">美容外科 🔴</button>
+      <button class="filter-tag" data-filter="injection" onclick="setFilter('injection', this)">微创注射 🟢</button>
+      <button class="filter-tag" data-filter="dermatology" onclick="setFilter('dermatology', this)">美容皮肤科 🟡</button>
+    </div>
+    <div class="procedure-count" id="procedureCount"></div>
+    <div class="procedure-cards" id="procedureCards"></div>
+  </div>
+</div>
+
+<!-- ==================== SKIN MODULE ==================== -->
+<div class="module-page" id="module-skin">
+  <div class="page-title">🔬 皮肤管理</div>
+  <div class="page-desc">了解常见皮肤问题的成因与治疗方案。点击每个皮肤问题卡片查看详细的治疗选项、术后护理要点及用户真实反馈。</div>
+  <div style="max-width:500px;margin:0 auto 32px;border-radius:var(--radius);overflow:hidden;box-shadow:0 0 30px rgba(78,168,222,0.1);">
+    <img src="皮肤_副本.png" alt="皮肤问题参考图" style="width:100%;display:block;">
+  </div>
+  <div class="skin-grid" id="skinGrid"></div>
+</div>
+
+<!-- ==================== MATERIALS MODULE ==================== -->
+<div class="module-page" id="module-materials">
+  <div class="page-title">🧪 材料库</div>
+  <div class="page-desc">全面了解医美领域使用的各类材料，包括注射填充、外科植入、辅助药剂和光电耗材。所有材料均收录NMPA获批产品。</div>
+  <div class="material-filters" id="materialFilters">
+    <button class="filter-tag active" data-matfilter="all" onclick="setMatFilter('all', this)">全部</button>
+    <button class="filter-tag" data-matfilter="injectable" onclick="setMatFilter('injectable', this)">注射填充</button>
+    <button class="filter-tag" data-matfilter="implant" onclick="setMatFilter('implant', this)">外科植入</button>
+    <button class="filter-tag" data-matfilter="adjuvant" onclick="setMatFilter('adjuvant', this)">辅助药剂</button>
+    <button class="filter-tag" data-matfilter="topical" onclick="setMatFilter('topical', this)">外用化学</button>
+    <button class="filter-tag" data-matfilter="device" onclick="setMatFilter('device', this)">光电耗材</button>
+  </div>
+  <div class="material-cards" id="materialCards"></div>
+</div>
+
+<!-- ==================== HUMANITIES MODULE ==================== -->
+<div class="module-page" id="module-humanities">
+  <div class="page-title">🧠 人文观察</div>
+  <div class="page-desc">跳出医美技术本身，从审美建构、身体自主、社会环境与哲学思辨的角度审视容貌改造现象。不种草、不推销，只呈现事实与思辨。</div>
+  <h3 style="font-size:1.3rem;color:var(--text-bright);margin-bottom:20px;">📖 核心思辨文章</h3>
+  <div class="essay-grid" id="essayGrid"></div>
+  <div class="humanities-summary"><h3>🗺️ 各部位人文观察摘要</h3><div id="humanitiesSummary"></div></div>
+</div>
+
+<!-- ==================== ABOUT MODULE ==================== -->
+<div class="module-page" id="module-about">
+  <div class="page-title">📋 关于本项目</div>
+  <div class="page-desc">本项目以东亚女性面部医美实践为切入点，呈现医学知识、审美标准与身体规训之间的复杂互动。所有内容仅用于教育与学术研究目的。</div>
+  <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:24px;margin-bottom:20px;">
+    <h3 style="font-size:1.1rem;color:var(--accent);margin-bottom:12px;">🎯 学术定位</h3>
+    <p style="font-size:0.88rem;color:var(--text-dim);line-height:1.7;">本项目从<strong style="color:var(--text);">历史学、社会学与医学人类学</strong>视角，审视东亚女性面部医美实践。不推销任何医美项目，不评判任何个人选择——仅呈现审美标准如何在<strong style="color:var(--text);">权力、资本与文化的交织中被建构、传播与内化</strong>。五个部位的审美演变时间轴，是一部微观的东亚女性身体规训史。</p>
+  </div>
+  <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:24px;margin-bottom:20px;">
+    <h3 style="font-size:1.1rem;color:var(--accent);margin-bottom:12px;">🔬 研究方法</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div><div style="font-size:0.9rem;font-weight:600;color:var(--text-bright);margin-bottom:6px;">📊 临床资料整合</div><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.6;">整合三甲医院医患咨询记录与临床调研公开访谈，提取用户真实反馈三维度：生理体感、效果落差、成本对比。</div></div>
+      <div><div style="font-size:0.9rem;font-weight:600;color:var(--text-bright);margin-bottom:6px;">📖 文献分析</div><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.6;">引用 Stanford Medicine、ASPS 等医学机构资料，结合程朱理学面相古籍，构建审美标准的历史谱系。</div></div>
+      <div><div style="font-size:0.9rem;font-weight:600;color:var(--text-bright);margin-bottom:6px;">🏗️ 数据结构化</div><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.6;">将 33 项手术、28 种材料、6 大皮肤问题按部位、可逆性、材料类型进行系统性分类，建立医美知识本体。</div></div>
+      <div><div style="font-size:0.9rem;font-weight:600;color:var(--text-bright);margin-bottom:6px;">🌐 交互式呈现</div><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.6;">通过面部地图、可展开卡片、时间轴弹窗等交互形式，使复杂的医学与人文信息变得直观可探索。</div></div>
+    </div>
+  </div>
+  <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:24px;margin-bottom:20px;">
+    <h3 style="font-size:1.1rem;color:var(--accent);margin-bottom:12px;">🧩 理论框架</h3>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="padding:14px 16px;background:rgba(255,255,255,0.02);border-radius:8px;border-left:3px solid var(--red);"><div style="font-size:0.9rem;font-weight:600;color:var(--text-bright);margin-bottom:4px;">身体规训 · Foucault</div><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.5;">审美标准是一套作用于女性身体的"规训权力"——通过面相学、社交媒体、医美广告等"凝视"机制，将外部审美标准内化为自我监视与自我改造。程朱理学对女性"柔和无棱角"的要求、当代V脸审美的霸权，都是规训权力的不同历史形态。</div></div>
+      <div style="padding:14px 16px;background:rgba(255,255,255,0.02);border-radius:8px;border-left:3px solid var(--orange);"><div style="font-size:0.9rem;font-weight:600;color:var(--text-bright);margin-bottom:4px;">医学化 · Medicalization</div><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.5;">正常的面部特征（单眼皮、宽鼻梁、方圆脸、面部凹陷）被医学话语重新定义为"需要治疗的缺陷"。医美产业通过将审美问题医学化，将消费者转化为患者，将欲望转化为需求。</div></div>
+      <div style="padding:14px 16px;background:rgba(255,255,255,0.02);border-radius:8px;border-left:3px solid var(--purple);"><div style="font-size:0.9rem;font-weight:600;color:var(--text-bright);margin-bottom:4px;">种族与审美权力 · Postcolonial STS</div><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.5;">Asian blepharoplasty 是殖民审美权力的微观体现——西方面部特征被建构为"精致""立体"的普世标准，东亚原生特征被标记为需要修正的"种族缺陷"。审美标准从来不是中立的：它们被地缘政治权力关系深刻塑造。</div></div>
+      <div style="padding:14px 16px;background:rgba(255,255,255,0.02);border-radius:8px;border-left:3px solid var(--teal);"><div style="font-size:0.9rem;font-weight:600;color:var(--text-bright);margin-bottom:4px;">身体自主的悖论 · Feminist Bioethics</div><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.5;">医美消费被同时建构为"赋权"与"压迫"：求美者将医美视为掌控自己身体的主体性行为，但这一"选择"发生在被审美权力严重限制的选项集内。真正的身体自主，是个体在被充分告知风险与文化背景后，做出的清醒决定。</div></div>
+    </div>
+  </div>
+  <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:24px;margin-bottom:20px;">
+    <h3 style="font-size:1.1rem;color:var(--accent);margin-bottom:12px;">⚖️ 立场声明</h3>
+    <div style="font-size:0.88rem;color:var(--text-dim);line-height:1.7;"><p style="margin-bottom:10px;"><strong style="color:var(--text);">不推销、不评判。</strong>本项目不构成任何医美推荐或诊疗建议。所有信息仅用于教育与学术研究目的。</p><p style="margin-bottom:10px;"><strong style="color:var(--text);">客观记录。</strong>每一例手术卡片均包含用户真实反馈、材料优缺点、风险清单。呈现全貌，而非选择性叙事。</p><p style="margin-bottom:10px;"><strong style="color:var(--text);">合规严谨。</strong>仅收录 NMPA 获批材料，手术分级按上海卫健委标准。未收录非法材料与未获批项目。</p></div>
+  </div>
+  <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:24px;">
+    <h3 style="font-size:1.1rem;color:var(--accent);margin-bottom:16px;">📚 参考文献</h3>
+    <div style="font-size:0.82rem;color:var(--text-dim);line-height:1.8;"><div style="margin-bottom:10px;"><strong style="color:var(--text);">医学机构资料</strong></div><div>• Stanford Medicine — Asian Blepharoplasty</div><div>• American Society of Plastic Surgeons (ASPS)</div><div>• 上海卫生健康委员会 —《医疗美容项目分级管理目录》</div><div>• 国家药品监督管理局 (NMPA)</div><div style="margin:12px 0 10px;"><strong style="color:var(--text);">学术文献</strong></div><div>• DOI: 10.1055/s-0040-1717147</div><div>• Foucault, M. (1975). Discipline and Punish</div><div>• Conrad, P. (2007). The Medicalization of Society</div><div>• Kaw, E. (1993). Medical Anthropology Quarterly</div><div>• Bordo, S. (1993). Unbearable Weight</div><div style="margin:12px 0 10px;"><strong style="color:var(--text);">古籍</strong></div><div>•《麻衣相法》• 程朱理学相关论述</div></div>
+  </div>
+</div>
+
+
+
+<!-- Eye Evolution Modal -->
+<div class="modal-overlay" id="eyeEvolutionModal" onclick="closeEyeEvolution(event)"><div class="modal-content" onclick="event.stopPropagation()"><button class="modal-close" onclick="closeEyeEvolution()">&times;</button><div class="modal-title">👁️ 眼部审美演变史</div><div class="modal-subtitle">从丹凤眼到多元双眼皮 — 一部东亚眼部审美变迁的微观史</div><div class="evolution-timeline">
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">古代</div><div class="evolution-era-time">传统审美</div></div><div><div class="evolution-era-desc">在中国古代传统审美体系中，<strong>丹凤眼（单眼皮）</strong>被视为古典东方美的标志。细长微挑的眼型被文人墨客反复吟咏——"眼如丹凤，眉似卧蚕"。单眼皮与东方面部骨骼结构相协调，呈现出含蓄、内敛、清秀的美学气质。这一时期的审美根植于本土文化，尚未受西方标准影响。</div><div class="evolution-era-images"><div><img src="丹凤眼.png" alt="丹凤眼" style="max-height:200px;"><div class="img-label">丹凤眼（单眼皮）</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">民国30年代 ~ 2018</div><div class="evolution-era-time">西风东渐 · 欧式大双</div></div><div><div class="evolution-era-desc">随着西方文化大量涌入，<strong>欧式大双（宽平行双眼皮）</strong>成为近一个世纪以来的主流审美。好莱坞电影、混血模特、网红经济共同推动了"深邃大眼"的审美霸权。双眼皮手术（Asian blepharoplasty）在此期间成为东亚最普遍的医美手术。这一时期的审美呈现出典型的<strong>西化倾向</strong>——追求宽、深、平行的眼褶，弱化了东方原生眼型的独特性。</div><div class="evolution-era-images"><div><img src="欧式大双.png" alt="欧式大双" style="max-height:200px;"><div class="img-label">欧式大双</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">2020 至今</div><div class="evolution-era-time">审美多元化</div></div><div><div class="evolution-era-desc">近年来，单一化的"欧式大双"审美逐渐松动，进入了<strong>审美多元化的新阶段</strong>。三种主流双眼皮形态各具特色：<strong>平行型</strong>端庄大气；<strong>开扇型</strong>自然灵动；<strong>新月型</strong>甜美温柔。这一转变标志着东亚审美开始回归本土面部特征，从"模仿西方"走向"个性化定制"。</div><div class="evolution-era-images"><div><img src="平行双眼皮.png" alt="平行" style="max-height:180px;"><div class="img-label">平行双眼皮</div></div><div><img src="开扇双眼皮.png" alt="开扇" style="max-height:180px;"><div class="img-label">开扇双眼皮</div></div><div><img src="新月型双眼皮.png" alt="新月" style="max-height:180px;"><div class="img-label">新月型双眼皮</div></div></div></div></div>
+</div></div></div>
+
+<!-- Nose Evolution Modal -->
+<div class="modal-overlay" id="noseEvolutionModal" onclick="closeNoseEvolution(event)"><div class="modal-content" onclick="event.stopPropagation()"><button class="modal-close" onclick="closeNoseEvolution()">&times;</button><div class="modal-title">👃 鼻部审美演变史</div><div class="modal-subtitle">从传统柔和到欧式网红，再到妈生鼻 — 女性鼻部审美的千年轮回与回归</div><div class="evolution-timeline">
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">古代传统</div><div class="evolution-era-time">宋明清 · 千年主流审美</div></div><div><div class="evolution-era-desc"><strong>唐代（特殊分支）：</strong>女性推崇短圆柔鼻，山根平缓、鼻头饱满有肉，不追求拔高鼻梁。审美包容度高。<br><br><strong>宋、明、清（千年主流定型）：</strong>程朱理学规训女性气质，审美彻底收紧——<strong>低山根、窄鼻翼、小巧柔和鼻头</strong>成为固定标准。面相学将高挺尖鼻定义为"刻薄强势"，宽鼻翼代表"多言外放"，不符合女性温顺隐忍的社会要求。这套审美根深蒂固，是东亚原生面部审美的底色。</div><div class="evolution-era-images"><div><img src="低山根、窄鼻翼,小巧柔和鼻.png" alt="古代传统鼻型" style="max-height:200px;"><div class="img-label">低山根 · 窄鼻翼 · 小巧柔和鼻</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">90年代 ~ 2015</div><div class="evolution-era-time">初代医美 · 欧式网红鼻</div></div><div><div class="evolution-era-desc">西方影视审美大量输入，大众完全抛弃传统柔和鼻标准，片面追求"立体=好看"。流行模板：<strong>高山根直通眉心、尖锐下勾鼻尖、极致收窄鼻翼</strong>。冲突核心：这套审美与东亚扁平面中骨骼完全不匹配，后期大量出现假面、违和的医美翻车案例。</div><div class="evolution-era-images"><div><img src="高山根直通眉心,尖锐下勾鼻尖,极致收窄鼻翼,复刻纯西式立体鼻.png" alt="欧式网红鼻" style="max-height:200px;"><div class="img-label">高山根 · 尖锐鼻尖 · 极致窄鼻翼</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">2016 ~ 2020</div><div class="evolution-era-time">韩式小翘鼻 · 审美折中过渡</div></div><div><div class="evolution-era-desc">大众开始反感夸张欧式大鼻，转向适配东亚脸型的<strong>韩式鼻型</strong>。流行模板：中等高度山根、小巧基底、鼻尖轻微上翘，保留传统"小鼻"框架。但依旧存在刻意垫高、线条生硬的<strong>流水线同质化问题</strong>。</div><div class="evolution-era-images"><div><img src="韩式小翘鼻,中等高度山跟小翘基底,鼻尖轻微上翘.png" alt="韩式小翘鼻" style="max-height:200px;"><div class="img-label">中等山根 · 小翘基底 · 鼻尖微翘</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">2021 至今</div><div class="evolution-era-time">妈生鼻 · 原生审美回归</div></div><div><div class="evolution-era-desc">审美回溯传统东亚柔和内核，诞生<strong>"妈生鼻"</strong>主流需求，完成审美闭环。核心特点：弱化突兀高山根，山根与眉骨做柔和双C衔接，鼻头圆润带轻微自然表现点，适度收窄鼻翼但不极端，保留面部柔和感。<br><br><strong>人类学核心：</strong>当代女性既想要轻微立体度改善扁平面中，又排斥尖锐、强势的夸张鼻型；潜意识延续千年"温和无攻击性"的女性审美标准，追求和原生五官适配的<strong>自然协调感</strong>。</div><div class="evolution-era-images"><div><img src="妈生鼻.png" alt="妈生鼻" style="max-height:200px;"><div class="img-label">妈生鼻 · 柔和自然</div></div></div></div></div>
+</div></div></div>
+
+<!-- Lip Evolution Modal -->
+<div class="modal-overlay" id="lipEvolutionModal" onclick="closeLipEvolution(event)"><div class="modal-content" onclick="event.stopPropagation()"><button class="modal-close" onclick="closeLipEvolution()">&times;</button><div class="modal-title">👄 唇部审美演变史</div><div class="modal-subtitle">从樱桃小嘴到水滴微笑唇 — 唇形审美如何被时代、文化与手术刀重塑</div><div class="evolution-timeline">
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">古代 ~ 民国</div><div class="evolution-era-time">樱桃小嘴 · 薄唇为美</div></div><div><div class="evolution-era-desc">在中国古代至民国漫长时期，<strong>"小口薄唇"（樱桃小嘴）</strong>是东方女性唇形的最高审美标准。"樱桃樊素口，杨柳小蛮腰"——白居易的诗句定格了千年唇形审美。薄而小巧的嘴唇被视为端庄、含蓄、秀雅的象征。民国时期西学东渐，但这一传统审美根基未被动摇。</div><div class="evolution-era-images"><div><img src="薄唇（樱桃小嘴）.png" alt="薄唇" style="max-height:200px;"><div class="img-label">薄唇（樱桃小嘴）</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">90年代 ~ 2010</div><div class="evolution-era-time">韩流审美 · M唇风潮</div></div><div><div class="evolution-era-desc">随着韩流文化强势输出，<strong>M唇</strong>审美席卷东亚。M唇以唇峰清晰、唇珠饱满、唇角微翘为特征，追求"清冷感"与"无辜感"并存。然而这一时期的审美处于<strong>矛盾过渡期</strong>：M唇受到追捧，但饱满厚唇仍被贴上"土气"标签。</div><div class="evolution-era-images"><div><img src="m唇.png" alt="M唇" style="max-height:200px;"><div class="img-label">M唇</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">2018 至今</div><div class="evolution-era-time">水滴微笑唇 · 厚唇解放</div></div><div><div class="evolution-era-desc">近年来，<strong>水滴微笑唇</strong>成为唇形审美新主流。通过手术调整唇角永久上扬，并将唇中部加厚打造"水滴"般饱满的立体感——<strong>社交所需的微笑被手术永久固定在脸上</strong>。厚唇终于摆脱了"土气"标签，成为一种主动的风格选择。但这引发了深刻的思辨：当微笑从情感的自然流露变为手术刀的产物，面部表达的真实性是否被消解？</div><div class="evolution-era-images"><div><img src="微笑唇.png" alt="水滴微笑唇" style="max-height:200px;"><div class="img-label">水滴微笑唇</div></div></div></div></div>
+</div></div></div>
+
+<!-- Jaw Evolution Modal -->
+<div class="modal-overlay" id="jawEvolutionModal" onclick="closeJawEvolution(event)"><div class="modal-content" onclick="event.stopPropagation()"><button class="modal-close" onclick="closeJawEvolution()">&times;</button><div class="modal-title">🦴 颌面/下颌审美演变史</div><div class="modal-subtitle">下颌是面部最能体现"气质规训"的骨骼区域 — 每个时代流行的脸型，都对应一套社会希望女性呈现的人格模板</div><div class="evolution-timeline">
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">古代传统</div><div class="evolution-era-time">宋明清 · 柔和无棱角</div></div><div><div class="evolution-era-desc">传统审美极度排斥面部"骨骼锋芒"。<strong>下颌圆润、线条流畅、无明显下颌角、下巴短而柔和</strong>——棱角下颌被视为强势、好争、不够柔顺。古典女性美核心：弱化骨骼力量感，突出柔、弱、静。</div><div class="evolution-era-images"><div><img src="清明仕女图.png" alt="古典柔和脸型" style="max-height:200px;"><div class="img-label">圆润下颌 · 柔和无棱角</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">90年代</div><div class="evolution-era-time">港风骨相 · 唯一认可棱角</div></div><div><div class="evolution-era-desc">影视媒介塑造独立、大方、成熟的女性形象。<strong>保留自然下颌角、方圆颌面、线条清晰</strong>。下颌棱角＝气场、故事感、女性力量。几乎没有人做颌面整形，原生骨相被充分尊重。</div><div class="evolution-era-images"><div><img src="90年代港风女星.png" alt="港风骨相" style="max-height:200px;"><div class="img-label">自然下颌角 · 清晰骨相</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">2000 ~ 2020</div><div class="evolution-era-time">V脸霸权 · 锥子脸时代</div></div><div><div class="evolution-era-desc">韩流审美+短视频滤镜+医美产业共同建构出<strong>"幼态、无攻击性、柔弱"</strong>的女性模板。<strong>无下颌角、极窄下巴、极致小V脸</strong>。下颌角被全面否定为"粗犷、男性化、显凶"。磨骨、截骨、瘦脸针、下巴填充全线爆发。</div><div class="evolution-era-images"><div><img src="网红脸.png" alt="V脸锥子脸" style="max-height:200px;"><div class="img-label">无下颌角 · 极致小V脸</div></div></div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">2021 至今</div><div class="evolution-era-time">方圆脸回流 · 原生骨相</div></div><div><div class="evolution-era-desc">大众厌倦统一流水线小脸，审美转向<strong>"自然、有辨识度、适度骨相支撑"</strong>。<strong>允许轻微下颌角、下颌线条自然、不过度削窄</strong>。现代审美不再完全否定女性力量感。医美趋势：拒绝重度磨骨，偏向保留原生轮廓的微调。</div><div class="evolution-era-images"><div><img src="方圆脸.png" alt="方圆脸" style="max-height:200px;"><div class="img-label">轻微下颌角 · 自然骨相</div></div></div></div></div>
+</div></div></div>
+
+<!-- Temple Evolution Modal -->
+<div class="modal-overlay" id="templeEvolutionModal" onclick="closeTempleEvolution(event)"><div class="modal-content" onclick="event.stopPropagation()"><button class="modal-close" onclick="closeTempleEvolution()">&times;</button><div class="modal-title">⛰️ 太阳穴 & 面颊审美演变史</div><div class="modal-subtitle">皮肉饱满=富足温顺，面部凹陷=愁苦刻薄 — 千年软组织审美如何催生填充医美的兴与衰</div><div class="evolution-timeline">
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">古代传统</div><div class="evolution-era-time">宋明清 · 饱满即福气</div></div><div><div class="evolution-era-desc"><strong>太阳穴充盈、面颊圆润饱满</strong>，拒绝凹陷干瘪。面相学将太阳穴凹陷、面中消瘦定义为"孤苦劳碌、性格阴郁"。无填充医美，依靠厚刘海遮挡凹陷、大面积腮红填充面颊视觉饱满度。</div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">90年代</div><div class="evolution-era-time">港风审美 · 接纳骨相</div></div><div><div class="evolution-era-desc"><strong>皮肉自然适度，允许轻微骨骼凹陷</strong>，不追求全脸充气饱满。影视媒介塑造独立大气女性形象，打破"凹陷=难看"的单一评判。面部填充项目几乎无人追捧。</div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">2000 ~ 2020</div><div class="evolution-era-time">韩流白幼瘦 · 充气脸时代</div></div><div><div class="evolution-era-desc"><strong>极致饱满填充：填满太阳穴、抬高苹果肌，完全消除凹陷</strong>，追求幼态、无棱角充气脸。韩流文化+短视频美颜滤镜+医美行业营销，共同建构"饱满幼态才是少女"的单一标准。玻尿酸/自体脂肪丰太阳穴、苹果肌填充大规模普及。</div></div></div>
+<div class="evolution-era"><div class="evolution-era-label"><div class="evolution-era-name">2021 至今</div><div class="evolution-era-time">原生回流 · 拒绝假面</div></div><div><div class="evolution-era-desc"><strong>适度饱满，拒绝过度充气假面</strong>，保留轻微原生骨骼起伏，追求贴合自身骨相的自然皮肉感。流水线充气脸审美疲劳，审美回归传统"柔和但不假面"的内核。重度全脸填充需求下降，精准微调热度上升。</div></div></div>
+</div>
+<div style="margin-top:28px;padding:20px;background:rgba(108,99,255,0.06);border-radius:var(--radius);border:1px solid rgba(108,99,255,0.15);"><div style="font-size:0.9rem;font-weight:700;color:var(--accent);margin-bottom:10px;">🌍 跨文化对比</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"><div><div style="font-size:0.82rem;font-weight:600;color:var(--text-bright);margin-bottom:4px;">东亚</div><div style="font-size:0.82rem;color:var(--text-dim);line-height:1.5;">排斥大面积骨骼外露，依靠软组织弱化面部锋芒，填充医美主打"消除凹陷、降低攻击性"。</div></div><div><div style="font-size:0.82rem;font-weight:600;color:var(--text-bright);margin-bottom:4px;">欧美</div><div style="font-size:0.82rem;color:var(--text-dim);line-height:1.5;">接纳清晰骨骼凹陷轮廓，凹陷面中被视作高级清冷质感，极少进行大面积软组织填充。</div></div></div><div style="font-size:0.78rem;color:var(--text-dim);margin-top:10px;font-style:italic;">二者差异并非天然审美偏好，是两套性别文化长期建构的外貌评判体系。</div></div>
+<div style="margin-top:16px;padding:18px;background:rgba(233,69,96,0.05);border-left:3px solid var(--red);border-radius:8px;"><div style="font-size:0.84rem;color:var(--text-dim);line-height:1.6;"><strong style="color:var(--text);">总结：</strong>和下颌、鼻部、唇部的审美逻辑形成闭环——东亚女性面部审美千年底层逻辑始终统一：<strong style="color:var(--text);">规避锋利、干瘪、有攻击性的面部特征</strong>。太阳穴与面颊的填充风潮变迁，直观展现社会不断重构"理想女性皮肉形态"，医美填充则是大众主动迎合这套流动审美建构的外在行为。</div></div>
+</div></div>
+
+<script>
+
+function t(k){const m={"card.materials":"材料","card.duration":"维持时长","card.price":"价格区间","card.risks":"主要风险","card.feedback":"用户反馈","card.physical":"生理体感","card.expectation":"效果落差","card.cost":"成本对比","card.humanities":"人文观察","card.aesthetic":"审美建构","card.autonomy":"身体自主","card.social":"社会环境","card.pros":"优点","card.cons":"缺点","card.principle":"核心原理","card.brands":"合规品牌","card.sites":"适配部位 & 项目","card.contra":"禁用部位","card.reversible":"可逆性说明","cat.surgeryBadge":"美容外科 🔴","cat.injectionBadge":"微创注射 🟢","cat.dermatologyBadge":"美容皮肤科 🟡","cat.surgery":"美容外科","cat.injection":"微创注射","cat.dermatology":"美容皮肤科","skin.cause":"成因","skin.treatments":"治疗方案"};return m[k]||k;}
+let lang="zh";
+const faceData = {
+  eye: {
+    id:'eye', name:'眼部区域', emoji:'👁️', color:'#e94560',
+    desc:'涵盖双眼、眉间、眼周及泪沟区域。眼部是面部最先显露衰老迹象的部位，也是医美手术密度最高的区域之一。',
+    procedures: [
+      {
+        id:'eye-1', name:'重睑成形术（双眼皮）', category:'surgery',
+        desc:'通过全切法、埋线法或三点式在上睑形成重睑褶皱。被称为"Asian blepharoplasty"，是东亚地区最常见的医美手术。',
+        materials:[{name:'无需植入物',brands:['可配合眶隔脂肪释放']}],
+        duration:'永久', priceRange:'¥3,000-30,000', risks:['术后7天严重肿胀','形态不满意需二次修复','修复价格远高于初次'],
+        feedback:{physical:'术后7天严重肿胀期，3个月形态逐步稳定；术后需忌口及避免眼部摩擦2周',expectation:'追求"欧式大宽双"易显假，自然款更耐看；埋线法约3-5年可能松脱',cost:'初次手术¥3,000-15,000，修复手术¥20,000-50,000+，差异巨大'},
+        humanities:{aesthetic:'双眼皮手术在西方医学文献中被称作"Asian blepharoplasty"，被认为是亚洲人种面部特征改造的代表性手术，折射出东西方审美权力的不对等。',autonomy:'多数求美者将单眼皮视为"无神"的自我认知，手术成为重塑自信的途径；但也有人术后怀念原本的特色单眼皮。',social:'短视频和社交媒体持续强化"大眼=精致"的单一审美标准，削弱了东亚原生眼型的美感多样性。',refs:['Stanford Medicine - Asian Blepharoplasty','DOI: 10.1055/s-0040-1717147']}
+      },
+      {
+        id:'eye-2', name:'内眦赘皮矫正（开眼角）', category:'surgery',
+        desc:'通过内眦成形术或外眦成形术切除内眼角多余皮肤，增大眼裂长度。',
+        materials:[{name:'无需植入物',brands:[]}],
+        duration:'永久', priceRange:'¥2,000-12,000', risks:['内眼角瘢痕增生','眼距过近破坏面部比例'],
+        feedback:{physical:'术后内眼角有瘢痕风险，约3-6个月软化；初期有牵拉感',expectation:'开眼角过度会导致眼距过近，破坏三庭五眼的面部黄金比例',cost:'初次¥2,000-8,000，瘢痕修复¥5,000-15,000'},
+        humanities:{aesthetic:'内眦赘皮（蒙古褶）是蒙古人种的眼部特征，开眼角手术本质上是消除这一种族特征，向"大眼无褶"的西方审美靠拢。',autonomy:'部分求美者仅因他人评价"眼睛小"就选择开眼角，而非基于自身审美需求。',social:'开眼角+双眼皮已成为东亚医美"套餐标配"，个体差异性被标准化手术模板取代。',refs:['ASPS 3D Animations']}
+      },
+      {
+        id:'eye-3', name:'下睑眼袋整形术', category:'surgery',
+        desc:'结膜入路（内切）或皮肤入路（外切）去除/重置眶隔脂肪，改善下睑袋状隆起。可配合泪沟填充。',
+        materials:[{name:'自体眶隔脂肪',brands:['可配合玻尿酸/胶原蛋白填充泪沟']}],
+        duration:'5-10年', priceRange:'¥5,000-25,000', risks:['脂肪去除过量导致眼眶凹陷','外切法留疤痕','下睑外翻'],
+        feedback:{physical:'外切法恢复期2-3周，淤青约10天消退；内切法恢复快但适应症有限',expectation:'脂肪去除过量会导致下睑凹陷，反而更显老；保留适量脂肪更自然',cost:'初次¥5,000-15,000，修复+脂肪回填¥20,000-50,000'},
+        humanities:{aesthetic:'眼袋在当代社会被标签化为"显老""疲惫"的体征，但医学上它是正常的眶隔脂肪垫结构，其突出程度受遗传因素影响远大于年龄。',autonomy:'去除眼袋常伴随着找回"精神感"的心理诉求，但过度去除带来的凹陷反而加速衰老外观。',social:'职场文化中将"疲惫面容"等同于"竞争力下降"，间接推动中年群体选择眼袋手术。'}
+      },
+      {
+        id:'eye-4', name:'肉毒素眼周除皱', category:'injection',
+        desc:'通过注射A型肉毒素阻断神经肌肉传导，松弛眼周表情肌，改善动态纹（鱼尾纹、眉间纹、抬头纹）。',
+        materials:[{name:'A型肉毒素',brands:['保妥适Botox','衡力','吉适Dysport','乐提葆Letybo']}],
+        duration:'4-6个月', priceRange:'¥800-5,000/次', risks:['表情僵硬','眉下垂','上睑下垂','不对称'],
+        feedback:{physical:'注射3天后淤青基本消退，1周见效，2周达峰值；几乎无恢复期',expectation:'剂量过大导致"扑克脸"，微笑时眼周无动态纹显得不自然',cost:'每年需2-3次补打，年支出¥2,400-15,000；长期累积成本超过单次外科手术'},
+        humanities:{aesthetic:'肉毒素的可逆性使其成为年轻人"试错"医美的首选，它重新定义了"抗衰"——不是消除衰老，而是控制表情本身。',autonomy:'可逆性给予求美者更高的身体自主权：不满意则等待代谢，不留下永久改变。这种低风险特性降低了医美的心理门槛。',social:'疫情期间"Zoom脸"焦虑推动了眼周肉毒素的需求激增——人们在视频会议中长时间注视自己的面部，放大了对动态纹的不满。'}
+      },
+      {
+        id:'eye-5', name:'玻尿酸泪沟填充', category:'injection',
+        desc:'使用小分子玻尿酸在泪沟区域（眶下凹陷）进行浅层填充，改善眼袋下方的凹陷阴影。',
+        materials:[{name:'小分子玻尿酸',brands:['乔雅登Juvéderm','瑞蓝Restylane','润百颜','润致']}],
+        duration:'6-12个月', priceRange:'¥1,500-8,000/次', risks:['丁达尔现象（皮肤泛蓝）','血管栓塞','不平整'],
+        feedback:{physical:'注射后轻微肿胀2-3天，即刻见效；泪沟区域皮肤薄，技术要求高',expectation:'短期平整效果好，但6个月后逐渐吸收需补打；长期成本累计高于眼袋手术',cost:'每年1-2次补打，年支出¥3,000-16,000；5年成本¥15,000-80,000 vs 眼袋手术一次¥5,000-25,000'},
+        humanities:{aesthetic:'泪沟填充反映了"眼下平整无阴影"成为年轻感的标志——但正常的眶下凹陷本是面部立体感的来源之一。',autonomy:'玻尿酸可被溶解酶快速清除，这种"可逆性"为求美者提供了心理安全网。',social:'美妆教程中大量"遮泪沟"技巧的存在，说明泪沟焦虑已渗透至日常化妆行为。'}
+      },
+      {
+        id:'eye-6', name:'眼周光电抗衰', category:'dermatology',
+        desc:'使用点阵激光、黄金微针、热玛吉或皮秒激光改善眼周细纹、松弛和肤质。',
+        materials:[{name:'光电设备',brands:['热玛吉Thermage','皮秒PicoSure','黄金微针','点阵激光']}],
+        duration:'6-12个月', priceRange:'¥2,000-15,000/次', risks:['术后结痂5-7天','敏感肌持续干燥泛红','色素沉着'],
+        feedback:{physical:'术后结痂期约5-7天，期间不能化妆；敏感肌可能持续干燥泛红2-4周',expectation:'需多次疗程（3-5次）才有明显效果，单次改善有限',cost:'全套疗程¥6,000-50,000，需每年维护'}
+      }
+    ]
+  },
+  nose: {
+    id:'nose', name:'鼻部区域', emoji:'👃', color:'#ff6b35',
+    desc:'涵盖鼻梁、鼻尖、鼻翼及鼻基底区域。鼻部作为面部中央的视觉焦点，其形态对整体面部观感影响极大。',
+    procedures: [
+      {
+        id:'nose-1', name:'假体隆鼻术', category:'surgery',
+        desc:'通过鼻腔内切口植入假体材料（硅胶或膨体）以增高鼻梁、改善鼻型。',
+        materials:[
+          {name:'固体硅胶',brands:['韩式生科','威宁','立秀','英普朗特']},
+          {name:'膨体ePTFE',brands:['射极峰','立秀膨体']}
+        ],
+        duration:'永久', priceRange:'¥5,000-50,000', risks:['硅胶：移位/透光/触感偏硬','膨体：微孔易藏细菌/感染后取出难度大'],
+        feedback:{physical:'术后1月明显肿胀期，3-6个月形态稳定；硅胶触感偏硬，膨体更自然但取出创伤大',expectation:'硅胶假体可能透光（阳光下可见假体轮廓）；膨体感染后治疗周期极长（数月抗生素+取出）',cost:'硅胶假体¥5,000-20,000；膨体¥15,000-50,000；感染修复费用可能数倍于初次'},
+        humanities:{aesthetic:'高鼻梁在社会审美中与"精致""立体""洋气"绑定，原生矮鼻被贴"土气"标签——这种审美建构深深植根于西方面部特征的审美霸权。',autonomy:'选择硅胶还是膨体，反映不同个体对风险的取舍：硅胶易取出但可能透光，膨体自然但感染后代价大。',social:'中国已成为全球鼻整形手术量最高的国家之一，"隆鼻"在年轻女性中的讨论热度接近日常美容话题。'}
+      },
+      {
+        id:'nose-2', name:'鼻尖成形术（自体软骨）', category:'surgery',
+        desc:'取用自体耳软骨、鼻中隔软骨或肋软骨雕刻后移植至鼻尖，塑造鼻尖形态和延长鼻小柱。',
+        materials:[{name:'自体软骨',brands:['耳软骨（鼻尖修饰）','鼻中隔软骨（鼻小柱延长）','肋软骨（全鼻综合）']}],
+        duration:'永久（软骨存活后）', priceRange:'¥15,000-80,000', risks:['取肋软骨胸口留疤','软骨弯曲变形','吸收率不确定'],
+        feedback:{physical:'取肋软骨者胸口有2-3cm疤痕，术后胸部疼痛1-2周；鼻部肿胀3-6个月',expectation:'软骨存在10-20%吸收率，最终形态需等待1年才能确定；肋软骨存在弯曲变形风险',cost:'耳软骨鼻尖¥15,000-30,000；肋软骨全鼻综合¥30,000-150,000'},
+        humanities:{aesthetic:'自体软骨代表"用自身组织修复自身"的理念，某种程度上抵制了工业化假体的异物感——是身体自主权在医美中的一种体现。',autonomy:'但取肋软骨意味着在身体另一部位制造创伤，这种"拆东墙补西墙"的选择反映了容貌改造的深层代价。',social:'肋软骨鼻综合被称为"鼻整形天花板"，其高价和技术门槛使之成为高端医美的身份象征。'}
+      },
+      {
+        id:'nose-3', name:'玻尿酸隆鼻', category:'injection',
+        desc:'注射大分子玻尿酸于鼻梁、鼻尖等部位，即刻增高鼻梁、改善鼻型。',
+        materials:[{name:'大分子玻尿酸',brands:['乔雅登','瑞蓝','艾莉薇','润百颜']}],
+        duration:'10-18个月', priceRange:'¥2,000-10,000/次', risks:['血管栓塞（严重可致失明）','鼻梁扩散变宽','长期反复注射总价高'],
+        feedback:{physical:'注射后轻微红肿2-3天，即刻见效无恢复期；但1年后鼻梁逐渐扩散变宽',expectation:'适合轻度修饰，不适合大幅增高；反复在同一部位注射会累积扩散效应',cost:'每年¥2,000-10,000，5年¥10,000-50,000，可能超过单次假体手术'},
+        humanities:{aesthetic:'玻尿酸隆鼻的"可逆性"使其成为年轻人鼻部医美的首选试水方式——但可逆不等于无风险，血管栓塞可致失明。',autonomy:'可溶解酶提供"后悔药"，但这种可逆性可能促使求美者在未充分评估风险的情况下冲动决策。'}
+      },
+      {
+        id:'nose-4', name:'CaHA羟基磷灰石鼻部填充', category:'injection',
+        desc:'使用羟基磷灰石微球（CaHA）填充鼻梁和鼻基底，提供骨性支撑力。',
+        materials:[{name:'羟基磷灰石CaHA',brands:['瑞得喜Radiesse','菲林普利']}],
+        duration:'12-24个月', priceRange:'¥3,000-12,000/次', risks:['无法溶解','填充过量只能等待代谢','质地硬不适合眼唇'],
+        feedback:{physical:'骨性支撑力强，塑形立体；但质地偏硬，填充过量无法溶解只能等待多年代谢',expectation:'适合需要骨性支撑的部位（鼻梁、鼻基底），不适合软组织部',cost:'比玻尿酸持久但价格更高，且不可逆（无法溶解）'}
+      },
+      {
+        id:'nose-5', name:'鼻部点阵激光/光子', category:'dermatology',
+        desc:'使用点阵激光或强脉冲光（IPL）改善鼻部痘坑、黑头、毛孔粗大及红血丝问题。',
+        materials:[{name:'光电设备',brands:['点阵激光','光子嫩肤IPL','皮秒激光']}],
+        duration:'6-12个月', priceRange:'¥800-5,000/次', risks:['术后结痂','需严格防晒','色素沉着风险'],
+        feedback:{physical:'术后结痂3-7天，期间不能化妆；需严格防晒1个月防反黑'}
+      }
+    ]
+  },
+  lip: {
+    id:'lip', name:'唇/口周区域', emoji:'👄', color:'#ff7b89',
+    desc:'涵盖嘴唇、人中、法令纹及口周区域。嘴唇作为高动态表情器官，其美学改造需要在静态美与动态自然之间取得平衡。',
+    procedures: [
+      {
+        id:'lip-1', name:'厚唇改薄手术', category:'surgery',
+        desc:'通过唇内侧切口去除部分黏膜和肌肉组织，将过厚的唇部修薄。',
+        materials:[{name:'无需植入物',brands:[]}],
+        duration:'永久', priceRange:'¥3,000-12,000', risks:['唇部麻木1-2个月','线条僵硬','自然微笑时违和'],
+        feedback:{physical:'术后1周进食时有刺痛感，嘴唇麻木感持续1-2个月；唇内侧疤痕隐蔽',expectation:'术后唇形可能过于僵硬，自然微笑时缺乏动态美感',cost:'修复手术（如过度切除后补填）价格可能数倍于初次'},
+        humanities:{aesthetic:'东亚文化传统中偏好薄唇，但当下受韩流和西方审美影响，饱满M唇逐渐流行——唇部审美经历了从"薄=精致"到"饱满=性感"的转向。',autonomy:'唇部是最高频的动态表情器官，任何永久性改变都可能影响微笑、说话等日常表达的舒适度。',social:'社交平台上的"微笑唇"模板普及，唇形的好看标准被不断窄化。'}
+      },
+      {
+        id:'lip-2', name:'薄唇增厚术（M唇成形）', category:'surgery',
+        desc:'通过唇珠塑造和唇弓加深技术，塑造当下流行的饱满M型唇形。',
+        materials:[{name:'无需植入物',brands:[]}],
+        duration:'永久', priceRange:'¥5,000-20,000', risks:['线条僵硬','唇部敏感度下降','可能不自然'],
+        feedback:{physical:'术后肿胀2周，进食不便；唇部触觉敏感度可能永久下降',expectation:'静态好看但动态违和——微笑时唇形变化不自然',cost:'¥5,000-20,000，修复费用更高'},
+        humanities:{aesthetic:'当下偏爱饱满M唇，但几十年前流行薄唇——唇形审美具有明显的时代性和文化建构性。东亚传统一度排斥厚唇，而欧美文化欣赏饱满唇形。'}
+      },
+      {
+        id:'lip-3', name:'玻尿酸丰唇', category:'injection',
+        desc:'注射小分子玻尿酸增加唇部容积，改善唇形、唇珠和唇纹。',
+        materials:[{name:'小分子玻尿酸',brands:['乔雅登','瑞蓝','伊婉','润百颜']}],
+        duration:'6-8个月', priceRange:'¥1,500-6,000/次', risks:['注射后2天明显肿胀','盲目追求厚度导致不协调','不对称'],
+        feedback:{physical:'注射后2天肿胀明显（预期内的"香肠嘴"阶段），1周消肿后形态自然',expectation:'常见误区是追求过厚效果，与五官不协调；唇部玻尿酸代谢较快',cost:'每6-8个月需补打，年支出¥3,000-12,000'},
+        humanities:{aesthetic:'玻尿酸丰唇给了求美者"试用"饱满唇形的机会——作为可逆项目，它降低了唇形审美的转换成本，也加速了审美潮流的更迭。'}
+      },
+      {
+        id:'lip-4', name:'口周肉毒素', category:'injection',
+        desc:'在口周注射肉毒素以改善露龈笑、放松颏肌（下巴肌肉）、淡化木偶纹。',
+        materials:[{name:'A型肉毒素',brands:['保妥适','衡力','吉适','乐提葆']}],
+        duration:'4-6个月', priceRange:'¥500-3,000/次', risks:['剂量把控难','过量导致闭唇无力','流口水'],
+        feedback:{physical:'几乎无恢复期，3天后起效；但剂量把控至关重要',expectation:'过量注射导致闭唇无力、喝水漏液、发音受影响',cost:'每年2-3次¥1,000-9,000'}
+      },
+      {
+        id:'lip-5', name:'唇周光电/刷酸', category:'dermatology',
+        desc:'使用光电设备或化学剥脱改善唇周暗沉、脱毛、红血丝和细纹。',
+        materials:[{name:'光电/化学剥脱',brands:['皮秒激光','光子嫩肤','果酸/水杨酸']}],
+        duration:'视疗程而定', priceRange:'¥500-4,000/次', risks:['唇周皮肤脆弱易脱皮反黑','需严格防晒'],
+        feedback:{physical:'唇周皮肤薄且敏感，术后易脱皮、反黑；需特别注意防晒和保湿',expectation:'暗沉改善需多次疗程，单次效果有限'}
+      }
+    ]
+  },
+  jaw: {
+    id:'jaw', name:'下颌/颌面区域', emoji:'🦴', color:'#2ec4b6',
+    desc:'涵盖下颌角、下巴（颏部）及咬肌区域。下颌轮廓决定了面部下半部的整体形态，是"V脸"审美的核心改造区域。',
+    procedures: [
+      {
+        id:'jaw-1', name:'假体隆颏术（垫下巴）', category:'surgery',
+        desc:'通过口腔内或下巴下方切口植入假体，延长或突出下巴，改善面下三分之一比例。',
+        materials:[{name:'硅胶/膨体/Medpor/PEEK',brands:['韩式生科','射极峰','史赛克Medpor','3D打印PEEK']}],
+        duration:'永久', priceRange:'¥8,000-60,000', risks:['假体过长导致说话咬合不自然','异物感','感染风险'],
+        feedback:{physical:'术后下巴麻木1-3个月，逐渐恢复；口腔内切口不影响外观',expectation:'假体过长或过大导致咬合不适和说话不自然',cost:'硅胶¥8,000-20,000；PEEK 3D定制¥30,000-60,000'}
+      },
+      {
+        id:'jaw-2', name:'下颌角肥大截骨', category:'surgery',
+        desc:'通过口内切口切除部分下颌角骨质，缩小下颌宽度，改变方脸轮廓。四级手术，全麻下进行。',
+        materials:[{name:'无需植入物',brands:[]}],
+        duration:'永久', priceRange:'¥30,000-100,000', risks:['神经损伤（下唇麻木）','骨不连','面部下垂','严重出血'],
+        feedback:{physical:'全麻手术，住院3-7天；面部严重肿胀持续1-2个月，完全消肿需3-6个月',expectation:'下颌角切除过多会导致面部支撑不足，加速面部下垂；神经麻木可能是永久性的',cost:'¥30,000-100,000（四级手术定价），修复手术更加昂贵且复杂'},
+        humanities:{aesthetic:'下颌角截骨是东亚地区特有的高频颌面手术——西方审美偏好清晰的下颌角（Jawline），而东亚追求"V脸"无角化。方圆脸被贴上"脸大""臃肿"标签。',autonomy:'截骨是不可逆的四级手术，其风险-收益比远超微创项目。选择截骨的求美者通常经历了长期的容貌焦虑累积。',social:'韩国"V脸"审美的全球化输出，使得下颌角截骨成为跨国医美旅游的热门项目。'}
+      },
+      {
+        id:'jaw-3', name:'肉毒素瘦脸（咬肌）', category:'injection',
+        desc:'在咬肌部位注射肉毒素，使咬肌萎缩变小，达到瘦脸效果。是目前最受欢迎的微创医美项目之一。',
+        materials:[{name:'A型肉毒素',brands:['保妥适','衡力']}],
+        duration:'4-6个月', priceRange:'¥800-4,000/次', risks:['面部松弛（咬肌萎缩后）','蛙腮（不均匀萎缩）','咀嚼无力'],
+        feedback:{physical:'注射后2周开始见效，1个月达峰值；咀嚼硬物时感觉咬肌无力',expectation:'咬肌萎缩后皮肤可能松弛——尤其是年龄较大、皮肤弹性差的人群',cost:'每年2-3次¥1,600-12,000；长期累积成本高但风险极低'},
+        humanities:{aesthetic:'咬肌注射的普及使得"瘦脸"从外科手术下沉为日常医美维护——但咬肌本是咀嚼功能所需肌肉，将其萎缩的行为模糊了医美与身体功能之间的界限。'}
+      },
+      {
+        id:'jaw-4', name:'下颌缘锯齿线埋线', category:'injection',
+        desc:'使用PPDO/PLLA/PCL大V线沿下颌缘埋入，通过锯齿钩挂提拉松弛软组织，重塑下颌线。',
+        materials:[{name:'PPDO/PLLA/PCL线材',brands:['悦升','恒生','美迪塑','MINT']}],
+        duration:'18-24个月', priceRange:'¥3,000-15,000/次', risks:['牵拉酸胀2周','线体可触','不对称','线头顶出'],
+        feedback:{physical:'术后持续牵拉酸胀感约2周，不能做大幅度表情；线体可被触摸到',expectation:'改善轻度松弛，但不能替代拉皮手术；线吸收后提拉效果逐渐消失',cost:'¥3,000-15,000/次，维持18-24个月'}
+      },
+      {
+        id:'jaw-5', name:'超声炮（下颌）', category:'dermatology',
+        desc:'使用高强度聚焦超声（HIFU）精准加热SMAS筋膜层，收紧下颌松弛软组织。',
+        materials:[{name:'超声设备',brands:['超声炮（国产）','美版超声刀Ultherapy']}],
+        duration:'1-1.5年', priceRange:'¥3,000-12,000/次', risks:['面部凹陷（能量过高）','神经损伤','效果不明显'],
+        feedback:{physical:'术中酸胀感明显，术后持续紧绷感；1月内不能大力揉搓面部',expectation:'效果渐进（1-3个月显现），单次效果有限，需配合其他项目'}
+      },
+      {
+        id:'jaw-6', name:'热玛吉（下颌/全脸）', category:'dermatology',
+        desc:'使用射频技术加热真皮层和皮下组织，刺激胶原蛋白再生，紧致下颌及面部皮肤。',
+        materials:[{name:'射频设备',brands:['热玛吉Thermage']}],
+        duration:'1-2年', priceRange:'¥8,000-25,000/次', risks:['术后干燥泛红','能量不足导致无效','能量过高可致烫伤'],
+        feedback:{physical:'术后干燥泛红1-2周，即刻有紧致感但最终效果需等3-6个月胶原再生',expectation:'紧致效果而非提升效果——不能替代拉皮手术',cost:'¥8,000-25,000/次，每1-2年需重复'}
+      }
+    ]
+  },
+  temple: {
+    id:'temple', name:'太阳穴/面颊区域', emoji:'⛰️', color:'#9b59b6',
+    desc:'涵盖太阳穴（颞部）、苹果肌及面颊区域。面部中上部的饱满度直接影响"年轻感"和面部和谐度。',
+    procedures: [
+      {
+        id:'temple-1', name:'颞部假体填充（丰太阳穴）', category:'surgery',
+        desc:'通过头皮内切口植入硅胶或膨体假体，填充凹陷的太阳穴区域。',
+        materials:[{name:'硅胶/膨体',brands:['韩式生科','射极峰']}],
+        duration:'永久', priceRange:'¥8,000-30,000', risks:['头皮切口疤痕','触摸有硬物感','假体移位'],
+        feedback:{physical:'头皮切口隐蔽，但触摸时有硬物感；术后肿胀1-2周',expectation:'太阳穴填充可改善面部上宽下窄的比例，但假体可能移位',cost:'¥8,000-30,000一次性支出'}
+      },
+      {
+        id:'temple-2', name:'玻尿酸填充太阳穴/苹果肌', category:'injection',
+        desc:'注射中大分子玻尿酸填充太阳穴凹陷和苹果肌，即刻恢复面部饱满感。',
+        materials:[{name:'中/大分子玻尿酸',brands:['乔雅登','瑞蓝','艾莉薇','伊婉']}],
+        duration:'10-18个月', priceRange:'¥2,000-10,000/次', risks:['过度填充出现"充气感假面"','血管栓塞','肿胀1周'],
+        feedback:{physical:'肿胀持续约1周；过量填充导致不自然的"充气感假面"',expectation:'追求过度饱满会导致面部比例失调，自然的轻度填充更耐看',cost:'每年¥2,000-10,000，长期成本累积可观'}
+      },
+      {
+        id:'temple-3', name:'PLLA童颜针（全脸凹陷）', category:'injection',
+        desc:'注射聚左旋乳酸（PLLA）微球，刺激自体胶原蛋白分泌，渐进性填充面部凹陷。',
+        materials:[{name:'PLLA聚左旋乳酸',brands:['Sculptra塑颜雅','国产童颜针']}],
+        duration:'2-3年', priceRange:'¥5,000-20,000/次（3次一疗程）', risks:['无即时填充效果','需3次注射','结节风险'],
+        feedback:{physical:'无即时效果！注射后需要等待2-3个月自身胶原逐渐增生才能看到变化',expectation:'求美者常因"打完没变化"误以为无效而追加注射——需要充分理解其滞后性',cost:'一疗程3次¥15,000-60,000，可维持2-3年'},
+        humanities:{aesthetic:'童颜针的"无即时效果"本质上是反消费主义的——它拒绝即刻满足，要求求美者等待身体自己的生产节奏。但这种"慢"在医美快消文化中恰恰成了推广障碍。'}
+      },
+      {
+        id:'temple-4', name:'PCL少女针（面颊）', category:'injection',
+        desc:'注射聚己内酯（PCL）微球凝胶，即刻填充并长效刺激胶原，兼顾即时与长效。',
+        materials:[{name:'PCL聚己内酯',brands:['Ellansé伊妍仕']}],
+        duration:'2-4年', priceRange:'¥8,000-20,000/次', risks:['无法溶解','填充过量修复周期长','价格高'],
+        feedback:{physical:'即刻填充效果+长期胶原刺激，注射后轻微肿胀数天',expectation:'兼顾了玻尿酸的即时性和童颜针的长效性，但无法溶解是最大风险',cost:'¥8,000-20,000/次，维持2-4年，年均成本可能低于玻尿酸'}
+      },
+      {
+        id:'temple-5', name:'热玛吉全脸紧致', category:'dermatology',
+        desc:'使用射频加热真皮层，刺激胶原蛋白再生，全面改善面部松弛和细纹。',
+        materials:[{name:'射频设备',brands:['热玛吉Thermage']}],
+        duration:'1-2年', priceRange:'¥8,000-25,000/次', risks:['术后干燥泛红1-2周','能量不当可致烫伤'],
+        feedback:{physical:'术后皮肤干燥泛红1-2周，需大量补水；3-6个月后效果最明显',expectation:'紧致松弛而非消除皱纹——需配合其他项目才能全面改善'}
+      },
+      {
+        id:'temple-6', name:'中面部锯齿线埋线', category:'injection',
+        desc:'使用PPDO/PLLA锯齿线提升苹果肌、淡化法令纹。',
+        materials:[{name:'PPDO/PLLA锯齿线',brands:['悦升','恒生','美迪塑','MINT']}],
+        duration:'18-24个月', priceRange:'¥3,000-12,000/次', risks:['牵拉感','线体可触','维持时间有限'],
+        feedback:{physical:'术后持续牵拉感约2周；线体在某些角度可被触摸到',expectation:'适合轻中度松弛，重度松弛仍需手术'}
+      }
+    ]
+  },
+  neck: {
+    id:'neck', name:'颈部区域', emoji:'🦒', color:'#4ea8de',
+    desc:'涵盖颈部皮肤、颈阔肌及下颌缘区域。颈部是面部衰老的"延伸带"，颈纹和颈部松弛是医美需求的重要驱动力。',
+    procedures: [
+      {
+        id:'neck-1', name:'颈部拉皮除皱', category:'surgery',
+        desc:'通过耳后和发际线内切口提紧颈部皮肤和颈阔肌，去除多余皮肤，改善颈部松弛。',
+        materials:[{name:'无需植入物',brands:[]}],
+        duration:'5-10年', priceRange:'¥20,000-80,000', risks:['创伤大','疤痕隐蔽但存在','恢复期2个月','面部紧绷感'],
+        feedback:{physical:'术后明显肿胀2-4周，完全恢复需2个月；耳后疤痕隐蔽但终生存在',expectation:'改善明显但创伤大，适合严重颈部松弛的中老年人群',cost:'¥20,000-80,000，单次手术维持5-10年'}
+      },
+      {
+        id:'neck-2', name:'颈纹玻尿酸填充', category:'injection',
+        desc:'将小分子玻尿酸注射入颈部横向纹路中，抚平颈纹。',
+        materials:[{name:'小分子玻尿酸',brands:['乔雅登','瑞蓝','润百颜']}],
+        duration:'6-12个月', priceRange:'¥1,500-5,000/次', risks:['皮肤薄易出现凸起条索','不平整','效果有限'],
+        feedback:{physical:'颈部皮肤极薄，注射后可能出现凸起条索（玻尿酸线性凸起）',expectation:'对浅表细纹有一定效果，但深层横纹改善有限；需多次治疗',cost:'每6-12个月¥1,500-5,000，长期累积成本高'}
+      },
+      {
+        id:'neck-3', name:'颈纹肉毒素注射', category:'injection',
+        desc:'在颈阔肌条索和颈横纹处注射肉毒素，放松肌肉改善动态颈纹。',
+        materials:[{name:'A型肉毒素',brands:['保妥适','衡力']}],
+        duration:'4-6个月', priceRange:'¥800-3,000/次', risks:['吞咽不适','颈部无力','发音受影响'],
+        feedback:{physical:'注射后可能出现短暂吞咽不适；效果在1-2周内显现',expectation:'改善动态颈纹（肌肉收缩引起），对静态纹效果有限',cost:'每年2-3次¥1,600-9,000'}
+      },
+      {
+        id:'neck-4', name:'热玛吉颈部紧致', category:'dermatology',
+        desc:'使用射频探头加热颈部皮肤和皮下组织，刺激胶原新生收紧颈部皮肤。',
+        materials:[{name:'射频设备',brands:['热玛吉Thermage']}],
+        duration:'1-2年', priceRange:'¥5,000-15,000/次', risks:['颈部皮肤薄需控制能量','干燥泛红','效果渐进'],
+        feedback:{physical:'颈部皮肤更薄，治疗时热感更明显；术后干燥持续1-2周',expectation:'紧致效果温和渐进，适合轻度松弛预防；严重松弛需手术'}
+      },
+      {
+        id:'neck-5', name:'黄金微针（颈纹）', category:'dermatology',
+        desc:'微针穿刺+射频能量同步释放，刺激颈部皮肤胶原再生，改善颈纹质地。',
+        materials:[{name:'微针射频设备',brands:['黄金微针']}],
+        duration:'1-1.5年', priceRange:'¥2,000-8,000/次', risks:['微创破皮','结痂3-5天','需多次疗程'],
+        feedback:{physical:'术后微小结痂3-5天，期间不能涂抹颈部护肤品；需3-5次疗程',expectation:'改善颈纹质感和紧致度，但颈纹深度不能完全消除'}
+      }
+    ]
+  }
+};
+
+const skinData = [
+  {
+    id:'wrinkles', name:'皱纹（动态纹+静态纹）', problem:'额头纹、眉间纹、鱼尾纹、法令纹、木偶纹',
+    cause:'动态纹由表情肌反复收缩形成；静态纹由皮肤胶原蛋白和弹性纤维流失、光老化叠加形成。',
+    treatments:[
+      {name:'肉毒素除皱',category:'injection',desc:'针对动态纹，阻断神经肌肉传导',duration:'4-6个月',price:'¥800-5,000'},
+      {name:'玻尿酸填充',category:'injection',desc:'针对静态纹，物理填平凹陷',duration:'6-18个月',price:'¥1,500-8,000'},
+      {name:'线雕提升',category:'injection',desc:'锯齿线提拉松弛，改善法令纹',duration:'12-24个月',price:'¥3,000-15,000'},
+      {name:'热玛吉/超声炮',category:'dermatology',desc:'加热真皮层/筋膜层，紧致皮肤',duration:'1-2年',price:'¥8,000-25,000'},
+      {name:'黄金微针',category:'dermatology',desc:'微针+射频改善细纹',duration:'1-1.5年',price:'¥2,000-8,000'},
+      {name:'点阵激光',category:'dermatology',desc:'剥脱/非剥脱，重建胶原',duration:'1-2年',price:'¥2,000-10,000'}
+    ],
+    feedback:{physical:'肉毒素3天见效，表情僵硬风险；激光术后结痂7-10天',expectation:'动态纹可大幅改善，静态纹只能淡化不能完全消除',cost:'注射类年均¥2,000-15,000；光电类年均¥5,000-25,000'}
+  },
+  {
+    id:'acne', name:'痤疮/痘痘', problem:'面颊和下巴区域的炎性痤疮、闭口粉刺、痘坑痘印',
+    cause:'皮脂分泌过剩+毛囊口角化异常+痤疮丙酸杆菌增殖+炎症反应。受激素水平、饮食、压力等多因素影响。',
+    treatments:[
+      {name:'光动力治疗',category:'dermatology',desc:'ALA光敏凝胶+光照杀灭痤疮杆菌',duration:'3-5次一疗程',price:'¥1,500-5,000/次'},
+      {name:'红蓝光治疗',category:'dermatology',desc:'无创杀菌消炎',duration:'需多次',price:'¥300-1,000/次'},
+      {name:'化学剥脱（刷酸）',category:'dermatology',desc:'果酸/水杨酸疏通毛孔',duration:'每月1次',price:'¥500-2,000/次'},
+      {name:'黄金微针射频',category:'dermatology',desc:'改善痘坑+控油',duration:'3-5次',price:'¥2,000-8,000/次'},
+      {name:'CO2点阵激光',category:'dermatology',desc:'痘坑修复最佳方案',duration:'1-3次',price:'¥3,000-10,000/次'}
+    ],
+    feedback:{physical:'光动力治疗时刺痛明显，术后需严格避光3天；刷酸后干燥泛红脱皮；CO2激光恢复期1-2周',expectation:'痘坑只能改善不能完全消除；严重痘坑需多种方案联合治疗',cost:'完整治疗方案¥5,000-50,000+，取决于严重程度'}
+  },
+  {
+    id:'spots', name:'色斑/色素沉淀', problem:'颧骨褐青色痣（太田痣）、雀斑、黄褐斑、晒斑、痘印色素',
+    cause:'紫外线照射（光老化）、激素波动（黄褐斑）、遗传（雀斑）、炎症后色素沉着（PIH）、年龄增长。',
+    treatments:[
+      {name:'皮秒/超皮秒激光',category:'dermatology',desc:'光机械效应击碎色素颗粒',duration:'3-5次',price:'¥2,000-8,000/次'},
+      {name:'调Q激光',category:'dermatology',desc:'深层色斑爆破',duration:'3-5次',price:'¥1,500-5,000/次'},
+      {name:'光子嫩肤IPL',category:'dermatology',desc:'浅层色斑+肤色不均',duration:'5-10次',price:'¥800-3,000/次'},
+      {name:'化学剥脱',category:'dermatology',desc:'表皮色斑淡化',duration:'周期性',price:'¥500-2,000/次'}
+    ],
+    feedback:{physical:'激光术后色斑区域会暂时加深（结痂/色沉），约1-2周脱落；严格防晒至关重要',expectation:'黄褐斑极易复发，受紫外线/激素/情绪多因素影响；雀斑易复发需定期维护',cost:'全套祛斑方案¥5,000-50,000+，且需终身防晒维护'}
+  },
+  {
+    id:'pores', name:'毛孔粗大/肤质粗糙', problem:'T区及面颊毛孔粗大、皮肤粗糙、暗沉无光泽',
+    cause:'皮脂分泌旺盛撑大毛孔、皮肤老化致毛孔周围支撑组织减少、清洁不当、紫外线光老化。',
+    treatments:[
+      {name:'黄金微针射频',category:'dermatology',desc:'精准控制穿刺+射频紧致',duration:'3-5次',price:'¥2,000-8,000/次'},
+      {name:'非剥脱点阵激光',category:'dermatology',desc:'改善毛孔+恢复期短',duration:'3-5次',price:'¥1,500-5,000/次'},
+      {name:'刷酸焕肤',category:'dermatology',desc:'疏通毛孔+加速代谢',duration:'每月1次',price:'¥500-2,000/次'},
+      {name:'水光针',category:'injection',desc:'深层补水改善肤质',duration:'30-45天',price:'¥800-3,000/次'}
+    ],
+    feedback:{physical:'黄金微针术后结痂3-5天；刷酸后干燥泛红；水光针注射后微小针眼1-2天消退',expectation:'毛孔只能缩小不能完全消失；需长期维护管理',cost:'年均¥5,000-30,000，取决于项目组合'}
+  },
+  {
+    id:'darkcircles', name:'黑眼圈', problem:'眼下暗沉发青/发褐/凹陷，分为血管型、色素型、结构型三类',
+    cause:'血管型（眼周皮肤薄可见血管发青）、色素型（黑色素沉淀发褐）、结构型（泪沟凹陷阴影）。',
+    treatments:[
+      {name:'胶原蛋白填充',category:'injection',desc:'血管型最佳，遮盖青色',duration:'6-12个月',price:'¥2,000-8,000/次'},
+      {name:'玻尿酸填充',category:'injection',desc:'结构型泪沟填充',duration:'6-12个月',price:'¥1,500-8,000/次'},
+      {name:'皮秒激光',category:'dermatology',desc:'色素型黑眼圈淡化',duration:'3-5次',price:'¥1,500-5,000/次'},
+      {name:'手术联合治疗',category:'surgery',desc:'结构型需眼袋手术+泪沟填充',duration:'5-10年',price:'¥10,000-30,000'}
+    ],
+    feedback:{physical:'胶原蛋白填充后青眼圈即刻改善（白色覆盖青色）；玻尿酸泪沟填充有丁达尔泛蓝风险',expectation:'结构型黑眼圈仅靠填充效果有限，需联合手术才能根本改善',cost:'注射维护年均¥3,000-16,000；手术一次性¥10,000-30,000'}
+  },
+  {
+    id:'necklines', name:'颈纹', problem:'颈部横纹、颈阔肌条索、颈部皮肤松弛',
+    cause:'颈部皮肤极薄且皮脂腺少（天然缺乏保湿）、长期低头（手机/电脑）、光老化、自然老化胶原流失。',
+    treatments:[
+      {name:'玻尿酸填充',category:'injection',desc:'填充横向颈纹',duration:'6-12个月',price:'¥1,500-5,000/次'},
+      {name:'肉毒素注射',category:'injection',desc:'放松颈阔肌改善动态纹',duration:'4-6个月',price:'¥800-3,000/次'},
+      {name:'热玛吉颈部',category:'dermatology',desc:'紧致颈部皮肤',duration:'1-2年',price:'¥5,000-15,000/次'},
+      {name:'黄金微针',category:'dermatology',desc:'改善颈纹质地',duration:'3-5次',price:'¥2,000-8,000/次'}
+    ],
+    feedback:{physical:'颈部皮肤薄，玻尿酸注射易出现凸起条索；肉毒素可能导致吞咽不适',expectation:'颈纹只能改善不能消失；预防（防晒+保湿+减少低头）比治疗更重要',cost:'年均¥3,000-20,000，取决于方案组合'}
+  }
+];
+
+const materialsData = [
+  // ===== 注射填充材料 (injectable) =====
+  {
+    name:'透明质酸（玻尿酸 HA）', category:'injectable',
+    reversible:'完全可逆（可溶解+自然代谢）',
+    principle:'天然多糖类高分子，可抓取水分在皮下形成支撑容积，单纯物理填充，不刺激大量自体胶原新生。大分子支撑力强，小分子适合浅层细纹。',
+    brands:'进口：乔雅登/瑞蓝/伊婉/艾莉薇/菲洛嘉；国产：润致/润百颜/海薇/芙媄登/宝尼达（长效）',
+    sites:'大分子：鼻梁/下巴/太阳穴/鼻基底深层；中分子：苹果肌/法令纹/面颊；小分子：泪沟/唇部/眼周/水光针',
+    contraindications:'眉间、鼻背浅层（血管密集，暴力注射易栓塞失明）',
+    duration:'小分子6-12月/中分子10-18月/长效18-24月',
+    pros:'安全性高、可溶解修复、分层适配全脸、肿胀轻微',
+    cons:'会完全代谢需定期补打；大分子鼻梁长期注射易出现鼻梁变宽'
+  },
+  {
+    name:'羟基磷灰石 CaHA', category:'injectable',
+    reversible:'半可逆（无溶解酶，缓慢代谢）',
+    principle:'仿生骨骼矿物微球悬浮于凝胶载体；凝胶3-6个月吸收，微球留存刺激自体胶原再生，形成骨性支撑。',
+    brands:'瑞得喜 Radiesse / 菲林普利',
+    sites:'鼻梁塑形/鼻基底填充/下颌缘骨性支撑/深层法令纹',
+    contraindications:'眼周、唇部、浅表细纹（质地硬，浅层注射易凹凸不平）',
+    duration:'12-24个月',
+    pros:'骨性支撑力强，塑形立体，适合轮廓骨性调整',
+    cons:'不可溶解，填充过量修复难度大；质地坚硬，不适合软组织薄的眼唇'
+  },
+  {
+    name:'医用胶原蛋白', category:'injectable',
+    reversible:'可逆（自然代谢，无专用溶解酶）',
+    principle:'提取动物同源胶原，直接补充皮下流失胶原，兼具填充+改善肤质，质地柔软贴合薄皮肤。',
+    brands:'双美 / 肤美达',
+    sites:'泪沟/黑眼圈/唇部细纹/眼周浅表干纹/浅层面部凹陷',
+    contraindications:'深层骨骼支撑部位（支撑力不足）',
+    duration:'6-12个月',
+    pros:'质地柔软，贴合薄嫩眼周皮肤，改善黑眼圈发青',
+    cons:'支撑力弱，不适合鼻梁、下巴等需要强轮廓塑形部位'
+  },
+  {
+    name:'PLLA 聚左旋乳酸（童颜针）', category:'injectable',
+    reversible:'半可逆（无溶解酶，缓慢代谢降解）',
+    principle:'可降解高分子微球，不提供即时填充，刺激自身成纤维细胞分泌胶原，逐步增厚软组织，属于"胶原再生型"填充。',
+    brands:'Sculptra 塑颜雅 / 国产童颜针',
+    sites:'全脸容量流失/太阳穴凹陷/面颊松弛凹陷/颈部细纹',
+    contraindications:'鼻梁、下巴即时塑形部位（无即刻填充效果）',
+    duration:'2-3年（胶原缓慢自然消退）',
+    pros:'长效改善面部衰老凹陷，自然柔和，无生硬填充感',
+    cons:'无即时效果，需多次注射（通常3次），见效慢，不适合想立刻垫高五官者'
+  },
+  {
+    name:'PCL 聚己内酯（少女针）', category:'injectable',
+    reversible:'半可逆（载体凝胶快速吸收，PCL微球缓慢降解，无溶解酶）',
+    principle:'凝胶载体提供即时填充，PCL微球长期刺激胶原再生，兼具即时塑形+长效抗衰双重机制。',
+    brands:'Ellansé 伊妍仕',
+    sites:'鼻梁/下巴/面颊凹陷/鼻基底/下颌缘轮廓调整',
+    contraindications:'眼周浅层、唇部（质地偏硬）',
+    duration:'2-4年',
+    pros:'既有即刻塑形效果，又能长效刺激胶原，兼顾填充与抗衰',
+    cons:'无法溶解，填充过量修复周期长'
+  },
+  {
+    name:'PMMA 聚甲基丙烯酸甲酯（爱贝芙）', category:'injectable',
+    reversible:'近乎永久（微球不可降解，仅载体吸收，无法溶解）',
+    principle:'凝胶载体短期填充，PMMA硬质微球永久留存，包裹自体胶原形成永久填充层，属于"永久性异物填充"。',
+    brands:'Bellafill 爱贝芙',
+    sites:'重度深层法令纹/陈旧性面部凹陷/严重软组织缺损',
+    contraindications:'鼻梁、眼周、唇部、浅层细纹',
+    duration:'永久留存',
+    pros:'一次注射长期维持，无需反复补打',
+    cons:'永久异物留存，出现凹凸、结节只能手术取出，风险更高'
+  },
+  {
+    name:'A型肉毒毒素', category:'injectable',
+    reversible:'完全可逆（4-6个月自然消退）',
+    principle:'阻断神经肌肉传导（抑制乙酰胆碱释放），放松过度收缩肌肉，淡化动态皱纹、缩小肥大肌肉。',
+    brands:'进口：保妥适/吉适/乐提葆；国产：衡力',
+    sites:'眼周：抬头纹/眉间纹/鱼尾纹/眉提升；颌面：瘦脸咬肌/下颌缘提升/放松颏肌/改善露龈笑；身体：瘦肩/瘦小腿/腋下止汗/颈纹放松',
+    contraindications:'眼轮匝肌深层、唇部肌肉过量注射（易导致面部僵硬、闭眼无力）',
+    duration:'4-6个月',
+    pros:'精准改善动态纹路和肌肉肥大，无异物留存',
+    cons:'短期失效需定期补打，剂量把控不当易表情僵硬'
+  },
+  {
+    name:'自体脂肪（浅层微量注射）', category:'injectable',
+    reversible:'半可逆（部分脂肪永久存活，剩余吸收代谢）',
+    principle:'抽取自身腰腹/大腿脂肪提纯后注射，自体软组织无排异，存活脂肪细胞永久留存，未存活部分3-6个月吸收。',
+    brands:'无商用品牌（取自求美者自身）',
+    sites:'太阳穴/苹果肌/泪沟/面颊浅层凹陷',
+    contraindications:'鼻梁、鼻背浅层（易栓塞、结节）',
+    duration:'30%-60%脂肪永久存活，剩余3-6个月吸收',
+    pros:'自身组织无排异，手感柔软',
+    cons:'存在吸收率不定，需多次注射，有栓塞风险'
+  },
+  {
+    name:'医美可吸收埋置线材（线雕线材）', category:'injectable',
+    reversible:'半可逆（12-24个月完全降解吸收，无溶解酶）',
+    principle:'三类基材：PPDO（6-9月完全吸收，倒钩提拉+轻度促胶原）、PLLA线（12-18月降解，胶原刺激更强）、PCL长线（18-24月降解，支撑最久）。按形态分平滑细线、螺旋线、锯齿大V线、铃铛线，依靠倒钩锚定松弛筋膜提拉软组织。',
+    brands:'悦升/恒生/美迪塑/MINT/玫瑰线',
+    sites:'眼周：平滑细线改善眼尾下垂；鼻部：细线轻度抬高鼻背；面颊/法令纹：中短锯齿线提升苹果肌；下颌缘/颈部：大锯齿长线收紧双下巴',
+    contraindications:'眉间、鼻背浅层（血管密集易栓塞）；唇部浅层（易表情僵硬、凸起可触及线痕）',
+    duration:'平滑细线12个月/锯齿长线18-24个月（胶原紧致效果额外延续半年）',
+    pros:'无外科大切口，穿刺小孔微创；线材可代谢不留永久异物；同时提拉+刺激胶原',
+    cons:'无骨性填充支撑，不能替代假体隆鼻/垫下巴；层次不对易凹凸、异物牵拉感'
+  },
+
+  // ===== 外科植入材料 (implant) =====
+  {
+    name:'医用固体硅胶假体', category:'implant',
+    reversible:'不可逆（永久留存，不满意只能手术完整取出）',
+    principle:'惰性高分子有机硅，化学性质稳定，不与人体组织融合（组织与假体间存在间隙），质地软硬可控，塑形稳定。',
+    brands:'韩式生科/威宁/立秀/英普朗特',
+    sites:'假体隆鼻/硅胶垫下巴/假体丰太阳穴',
+    contraindications:'眼周软组织薄区域、浅表皮下植入',
+    duration:'终身留存',
+    pros:'塑形清晰、取出简单、价格区间广',
+    cons:'假体与组织存在间隙，长期可能移位、透光，触感偏硬'
+  },
+  {
+    name:'膨体 ePTFE（聚四氟乙烯）', category:'implant',
+    reversible:'不可逆（组织长入微孔，取出难度高于硅胶，需手术剥离）',
+    principle:'多孔蜂窝结构假体，软组织可向内长入微孔，与自身组织紧密贴合，不易移位、不易透光。',
+    brands:'射极峰 / 立秀膨体',
+    sites:'鼻综合/鼻基底假体植入/垫下巴',
+    contraindications:'浅表皮下、感染体质人群',
+    duration:'终身留存',
+    pros:'贴合自身组织，不易透光移位，手感自然',
+    cons:'微孔易藏细菌，感染后取出难度大、创伤更高'
+  },
+  {
+    name:'自体软骨（耳/鼻中隔/肋软骨）', category:'implant',
+    reversible:'不可逆（移植后软骨存活永久，修复需二次手术雕刻取出）',
+    principle:'取自求美者自身软骨组织，同源组织无排异反应，质地柔软适合精细鼻尖塑形。耳软骨用于鼻尖修饰，鼻中隔用于鼻小柱延长，肋软骨用于全鼻综合。',
+    brands:'无商用品牌（人体自身取材）',
+    sites:'耳软骨：鼻尖塑形/鼻头修饰；鼻中隔：鼻小柱延长/鼻尖支撑；肋软骨：全肋鼻综合/重度鼻修复/复杂颌面凹陷填充',
+    contraindications:'鼻梁单纯垫高（软骨易弯曲变形）',
+    duration:'终身存活',
+    pros:'完全无排异，塑形自然，适合精细鼻部修复',
+    cons:'需要额外切口取软骨，增加手术创伤，肋软骨存在弯曲风险'
+  },
+  {
+    name:'Medpor 高密度人工骨', category:'implant',
+    reversible:'不可逆（组织长入孔隙，需手术剥离取出）',
+    principle:'硬质多孔医用高分子（多孔聚乙烯），骨性支撑力极强，组织可长入孔隙固定假体，适合骨骼缺损填充。',
+    brands:'美国史赛克 Stryker',
+    sites:'鼻基底填充/重度颌面凹陷/下巴骨骼修复',
+    contraindications:'软组织浅层、眼周、唇部',
+    duration:'终身留存',
+    pros:'骨性支撑远超硅胶膨体，不弯曲变形',
+    cons:'质地坚硬，触感生硬，取出创伤大'
+  },
+  {
+    name:'PEEK 3D定制人工骨', category:'implant',
+    reversible:'不可逆（手术取出）',
+    principle:'医用高分子（聚醚醚酮），根据个人CT数据3D打印个性化假体，完美贴合骨骼轮廓，排异率极低。',
+    brands:'各类医用3D打印器械厂商',
+    sites:'复杂颌面截骨修复/下巴重建/重度鼻基底骨骼缺损',
+    contraindications:'浅层软组织填充',
+    duration:'终身留存',
+    pros:'精准贴合个人骨骼，支撑稳定，排异率极低',
+    cons:'价格昂贵，仅用于高难度修复手术'
+  },
+
+  // ===== 注射辅助药剂 (adjuvant) =====
+  {
+    name:'玻璃酸酶（玻尿酸溶解酶）', category:'adjuvant',
+    reversible:'1-3天分解，药剂自身快速代谢，无残留',
+    principle:'水解透明质酸分子链，专用于玻尿酸填充过量、凹凸不平、血管栓塞急救修复。仅对透明质酸类材料生效。',
+    brands:'医用注射用玻璃酸酶（医院院内制剂、医美专用溶解酶注射液）',
+    sites:'全脸玻尿酸填充修复（鼻梁/泪沟/唇部/太阳穴/法令纹）',
+    contraindications:'硅胶、膨体、自体软骨、CaHA、童颜针等非玻尿酸材料无法溶解；感染红肿急性期禁止注射',
+    duration:'单次注射起效，一次性完成溶解',
+    pros:'针对性快速修复玻尿酸填充失误，可急救栓塞风险',
+    cons:'仅对透明质酸生效；再生填充材料、假体无效；过量注射会轻微溶解自身皮下原生玻尿酸'
+  },
+  {
+    name:'糖皮质激素局封注射液', category:'adjuvant',
+    reversible:'局部注射后1-2周缓慢代谢，不永久留存皮下',
+    principle:'抑制局部纤维组织过度增生，软化注射后结节、增生痘疤、瘢痕硬块。',
+    brands:'曲安奈德注射液 / 得宝松注射液（医用院内注射制剂）',
+    sites:'全脸增生痘疤/填充术后皮下肉芽肿/凸起瘢痕封闭治疗',
+    contraindications:'面部浅表薄皮浅层注射（易造成皮肤凹陷萎缩）；孕期、糖尿病人群慎用',
+    duration:'单次1-3个月，瘢痕严重需多次间隔注射',
+    pros:'有效软化顽固结节、增生疤痕',
+    cons:'浅层注射易导致局部皮肤萎缩凹陷，剂量把控要求高'
+  },
+  {
+    name:'脱氧胆酸溶脂针注射液', category:'adjuvant',
+    reversible:'溶解脂肪细胞后药剂随身体代谢排出，无永久异物留存',
+    principle:'破坏脂肪细胞膜，消融浅层皮下堆积脂肪，缩小局部脂肪体积。脂肪细胞凋亡后不会再生。',
+    brands:'国内合规溶脂注射液 / 院内复合溶脂制剂',
+    sites:'双下巴/下颌缘浅层脂肪/面颊局部赘肉美塑溶脂治疗',
+    contraindications:'鼻梁、眼周、唇部软组织薄区域；深层骨骼上方；不用于重度脂肪堆积',
+    duration:'单次疗程消融稳定，需间隔多次治疗',
+    pros:'微创针剂溶脂，创伤远小于外科吸脂',
+    cons:'术后肿胀疼痛明显；仅适合浅层少量脂肪；无法改善骨性宽大轮廓'
+  },
+  {
+    name:'PRP/PRF 自体血清提取制剂', category:'adjuvant',
+    reversible:'1-3个月完全代谢，无外来异物永久留存',
+    principle:'富集血液血小板活性生长因子，修复皮肤屏障、刺激浅层胶原，改善细纹暗沉。完全自体来源无排异。',
+    brands:'无商用成品（求美者自体血液实验室离心提取）',
+    sites:'全脸水光美塑/眼周细纹修复/面颊粗糙暗沉/颈部细纹注射',
+    contraindications:'血液疾病、凝血功能障碍、感染期皮肤',
+    duration:'单次改善维持1-2个月，需按疗程多次注射巩固',
+    pros:'完全自体组织无排异，温和修复敏感受损皮肤',
+    cons:'操作流程复杂，单次治疗成本高，无即时轮廓填充效果'
+  },
+  {
+    name:'动能素/三文鱼复合水光制剂', category:'adjuvant',
+    reversible:'注射后1个月内完全代谢吸收',
+    principle:'透明质酸基底搭配氨基酸、维生素、多肽，深层补水、提亮肤色、淡化干纹。仅改善肤质，无填充塑形效果。',
+    brands:'菲洛嘉动能素 / 丝丽三文鱼水光 / 润致复合水光',
+    sites:'全脸基础水光嫩肤/额头/面颊/颈部干燥粗糙肤质改善',
+    contraindications:'急性爆痘发炎期、皮肤破损溃烂期、过敏急性期',
+    duration:'30-45天，需定期复打',
+    pros:'全面改善干燥、暗沉、细纹，适配所有基础肤质',
+    cons:'仅改善肤质，无立体轮廓填充效果，代谢速度快'
+  },
+  {
+    name:'海姆泊芬静脉光敏注射剂', category:'adjuvant',
+    reversible:'静脉输注后72小时完整代谢排出体外，无长期体内残留',
+    principle:'富集于血管畸形内皮细胞，特定红光照射后产生活性氧封闭异常毛细血管，针对先天性血管胎记。',
+    brands:'海姆泊芬注射液（国内唯一合规静脉光敏药剂）',
+    sites:'面部鲜红斑痣/大面积血管性皮损光动力治疗',
+    contraindications:'孕期、哺乳期、严重肝肾功能不全、光敏体质人群',
+    duration:'单次给药配合光照完成，皮损严重需多次间隔治疗',
+    pros:'针对先天性血管胎记、大面积红血丝皮损效果显著',
+    cons:'给药后需严格避光72小时，易出现皮肤红肿、刺痛反应'
+  },
+
+  // ===== 皮肤科外用化学药剂 (topical) =====
+  {
+    name:'果酸/水杨酸/壬二酸/复合酸/TCA焕肤制剂', category:'topical',
+    reversible:'仅作用角质层，28天随新陈代谢完整脱落，无皮下留存',
+    principle:'松解角质细胞粘连，疏通毛孔、加速黑色素代谢、淡化痘印、平滑粗糙肤质。不同浓度对应不同剥脱深度。',
+    brands:'芯丝翠果酸/博乐达水杨酸/迪玛丝缇复合酸/院内调配TCA高浓度剥脱剂',
+    sites:'额头闭口/脸颊痤疮/下巴痘印/颈部粗糙/全脸肤色暗沉焕肤',
+    contraindications:'眼周、唇部黏膜、皮肤破损溃烂、急性过敏泛红、暴晒后1周内',
+    duration:'单次焕肤改善维持1个月，周期性疗程淡化痘印色斑',
+    pros:'无创微创，性价比高，同步改善出油、闭口、色素沉淀',
+    cons:'术后易干燥泛红；高浓度酸存在反黑风险；敏感肌需低浓度适配'
+  },
+  {
+    name:'外用光敏凝胶（5-氨基酮戊酸 ALA）', category:'topical',
+    reversible:'涂抹2-4小时后擦拭清除，残留成分48小时完全代谢',
+    principle:'渗透进痤疮、浅表增生皮损，特定光源照射产生活性氧，杀灭痤疮丙酸杆菌、抑制皮肤异常增生。',
+    brands:'医用光动力外用 ALA 凝胶',
+    sites:'中重度炎性痤疮/浅表皮肤增生修复',
+    contraindications:'眼内黏膜、唇部薄嫩黏膜、大面积破损溃烂皮肤',
+    duration:'单次涂抹配合光照完成，炎症痤疮需3-5次疗程',
+    pros:'针对性改善反复炎症痘痘，无抗生素耐药问题',
+    cons:'光照过程刺痛明显；治疗后需严格避光3天；短期皮肤干燥脱皮'
+  },
+  {
+    name:'基础物理治疗配套外用制剂', category:'topical',
+    reversible:'仅皮肤表层涂抹，清水可清洗，不渗透皮下长期留存',
+    principle:'导电凝胶传导仪器能量、冷敷面膜补水舒缓、辅助活性成分浅层渗透，降低光电仪器对皮肤的刺激。',
+    brands:'医美专用医用冷敷贴/射频导电凝胶/院内舒缓导入原液',
+    sites:'全脸/颈部基础皮肤护理（红蓝光/无创射频/微电流/药物导入/冷喷）',
+    contraindications:'对精华凝胶成分过敏、皮肤大面积破溃患者',
+    duration:'单次治疗即时舒缓补水，无长期塑形抗衰效果',
+    pros:'降低光电物理仪器刺激，术后快速舒缓泛红干敏',
+    cons:'仅辅助护理，无独立改善色斑、细纹、轮廓功效'
+  },
+
+  // ===== 光电/物理仪器一次性耗材 (device) =====
+  {
+    name:'射频/聚焦超声专用治疗探头', category:'device',
+    reversible:'仅治疗时贴合皮肤表层，不植入皮下，治疗后回收更换',
+    principle:'传导射频/超声热能至真皮、筋膜层（SMAS），收紧松弛软组织、刺激胶原再生。单探头限定固定发数。',
+    brands:'热玛吉原厂射频治疗探头/超声炮配套超声换能探头/台式多极射频耗材头',
+    sites:'热玛吉全脸/颈部紧致；超声炮下颌缘/中面部提拉；额头/眼周/面颊/下颌/颈部抗衰紧致',
+    contraindications:'眼内眼球、骨骼表层过薄皮肤、面部金属植入物上方',
+    duration:'一次性消耗品，单探头限定固定发数，单次治疗使用一支',
+    pros:'精准分层传递热能，紧致抗衰效果稳定',
+    cons:'一次性耗材成本高，探头发数用尽必须更换，无法重复使用'
+  },
+  {
+    name:'微针类射频/点阵耗材针头', category:'device',
+    reversible:'穿刺表皮后即刻拔出，针头不留在皮肤内，一次性使用废弃',
+    principle:'微针穿刺表皮直达真皮层，同步传递射频热能，刺激胶原再生+机械性皮肤重建，改善毛孔、痘坑、细纹。',
+    brands:'黄金微针原厂射频微针阵列/医用一次性滚针微针套件',
+    sites:'黄金微针：毛孔/痘坑/眼周细纹/下颌松弛；全脸微针导入营养精华',
+    contraindications:'急性爆痘炎症期、皮肤溃烂、血管畸形皮损',
+    duration:'单人次一次性针头，治疗后直接丢弃，不可重复消毒复用',
+    pros:'精准控制穿刺深度，射频同步紧致，修复痘坑毛孔效果优于单纯点阵激光',
+    cons:'破皮微创，术后有结痂恢复期，敏感肌恢复期泛红明显'
+  },
+  {
+    name:'各类激光配套治疗手具/脱毛激光耗材头', category:'device',
+    reversible:'仅光源发射接触皮肤表面，无穿刺植入，无耗材留存人体',
+    principle:'发射特定波长激光，靶向击碎黑色素（皮秒/调Q）、毛细血管（染料激光）、毛囊黑色素（半导体脱毛激光），实现选择性光热作用。',
+    brands:'皮秒原厂治疗手具/点阵激光光学耗材/半导体脱毛激光探头',
+    sites:'皮秒祛斑洗纹身/点阵激光修复痘坑疤痕/唇毛发际线络腮胡脱毛；全脸色斑细纹色素沉淀改善',
+    contraindications:'眼球、深色胎记易灼伤区域、暴晒后色素活跃皮肤',
+    duration:'仪器手具可重复使用，仅配套冷却保护耗材单次更换',
+    pros:'波长细分针对性强，祛斑、脱毛、疤痕修复分设备精准改善',
+    cons:'能量把控不当易出现反黑、色素脱失，术后严格防晒要求高'
+  },
+  {
+    name:'头面部射频光纤消融针（光纤溶脂耗材）', category:'device',
+    reversible:'术中穿刺皮下脂肪层，治疗结束完整抽出光纤，无耗材留在体内',
+    principle:'细光纤传导射频热能进入皮下脂肪层，消融浅层皮下脂肪细胞，同步收紧皮下筋膜软组织，实现溶脂+紧致双重效果。',
+    brands:'医用光纤溶脂专用射频穿刺光纤套件',
+    sites:'额部/颞部/面颊/下颌/颈部浅层脂肪消融收紧',
+    contraindications:'鼻梁、眼周薄软组织、深层骨骼上方脂肪；不适用重度骨性宽大轮廓改善',
+    duration:'光纤为一次性无菌耗材，单人单次使用后废弃',
+    pros:'微创针孔溶脂，创伤远低于外科开刀吸脂，同步紧致皮肤不松弛',
+    cons:'仅能消融浅层少量脂肪；下颌骨骨性宽大无改善作用；术后肿胀7-14天'
+  },
+  {
+    name:'等离子/微波/红蓝光物理治疗配套耗材', category:'device',
+    reversible:'体外仪器耗材，仅贴合皮肤表层，无穿刺无植入，可重复清洁使用',
+    principle:'等离子焕肤打磨表皮、微波抗炎紧致、红蓝光抑制痤疮杆菌（蓝光杀菌/红光抗炎）、冷喷舒缓镇静。均为体外物理能量，无化学药剂留存。',
+    brands:'医用等离子嫩肤仪耗材/皮肤科LED光疗设备套件',
+    sites:'全脸痤疮炎症/毛孔粗糙/敏感肌泛红舒缓；额头/面颊/颈部基础物理护理',
+    contraindications:'皮肤恶性增生皮损；金属植入区域微波治疗慎用',
+    duration:'仪器探头可重复消毒使用，仅配套过滤棉、缓冲膜为单次消耗品',
+    pros:'几乎无创无破皮，适合敏感肌日常维稳抗炎',
+    cons:'仅改善轻度肤质炎症，无深层抗衰、填充塑形功效'
+  }
+];
+
+const humanitiesEssays = [
+  {
+    id:'essay-1',
+    title:'可逆微创 vs 永久外科 — 身体改造的风险取舍',
+    num:'01',
+    desc:'可逆注射/线雕类项目的低试错成本迎合了"先体验、不满意可恢复"的消费心态；而永久外科手术代表对长期固定容貌的接受和不可逆风险的承担。二者的选择本质上是不同个体对"自我身体控制权"的观念差异。年轻人偏好可逆（肉毒素、玻尿酸），中年人面临更显著的衰老时更倾向选择永久手术。可逆性降低了医美的心理门槛，但也可能导致冲动决策——"大不了溶解"的思维绕过了对风险本身的充分评估。',
+    themes:['可逆性','风险','身体控制权','年龄差异']
+  },
+  {
+    id:'essay-2',
+    title:'标准化大众审美与原生面部差异化冲突',
+    num:'02',
+    desc:'医美行业在全球范围内输出了一套统一的审美模板：高鼻梁、大双眼皮、尖下巴、饱满面中、清晰下颌线。原生五官的特色——单眼皮、宽鼻梁、方圆脸、薄唇——被视作需要修正的"瑕疵"。医美技术既是美化工具，也在客观上缩小了人类的容貌多样性。当越来越多的人通过手术趋向同一审美模板，街头巷尾的面孔越来越相似，"美"的定义本身被窄化了。双眼皮手术（Asian blepharoplasty）作为东亚最高频的医美手术，是种族特征改造最具代表性的案例。',
+    themes:['审美标准化','容貌多样性','种族特征','社会审美']
+  },
+  {
+    id:'essay-3',
+    title:'医美、容貌焦虑与身体自主的辩证关系',
+    num:'03',
+    desc:'医美与容貌焦虑的关系是双面的。负面来看，短视频、广告和网红文化不断放大面部"缺陷"，制造持续升级的容貌内卷，使原本正常的面部特征成为需要"修复"的问题。正面来看，医美确实给容貌自卑人群提供了调整自我的渠道——对于因先天或后天因素导致面部差异而遭受社会歧视的人，医美技术是重要的心理和社会支持工具。关键在于区分"发自内心的自我完善需求"和"被外界标准裹挟的盲目改造"。社会压力（同辈对比、职场竞争、婚恋市场）的介入使这一区分变得困难。',
+    themes:['容貌焦虑','身体自主','自我完善','社会压力']
+  },
+  {
+    id:'essay-4',
+    title:'不同年龄、经济水平人群的医美选择差异',
+    num:'04',
+    desc:'医美选择存在明显的阶层区分。学生群体以低价可逆项目为主（肉毒素、玻尿酸小部位、皮肤管理），以试错和轻度改善为目的。中青年经济稳定群体可能接受鼻综合、面部拉皮等永久手术。高消费阶层可触及3D定制PEEK植入、全肋鼻综合、四级颌面截骨等高端项目。医美不仅是容貌改造，也成为一种社会阶层的消费符号——选择什么项目、在什么机构、用什么材料，透露着经济实力和社交圈层的信息。这种阶层差异也引发了对"美的公平性"的讨论。',
+    themes:['经济阶层','消费差异','美的公平性','社会符号']
+  }
+];
+
+const humanitiesByRegion = [
+  {region:'眼部',aesthetic:'大众追求"大双眼/无眼袋/平整泪沟"，弱化单眼皮特色；早年流行细长丹凤眼，如今追求平行大双——眼部审美经历了从"古典东方美"到"西式大眼"的转向。',autonomy:'年轻人选肉毒素试错（低风险+可逆），中年人倾向外科永久改善（眼袋手术/提眉）——不同生命阶段的自主选择策略截然不同。',social:'短视频放大"无神眼""显老眼袋"负面标签；疫情期间Zoom会议加剧了眼周医美需求。'},
+  {region:'鼻部',aesthetic:'高鼻梁在社会审美中与"精致立体""洋气"强绑定，原生宽鼻/矮鼻被贴上"土气"标签——这种审美建构植根于西方面部特征的审美霸权。',autonomy:'未成年人倾向注射尝试（玻尿酸隆鼻），经济独立者承担永久手术风险（假体/肋软骨）。',social:'广告持续强化"鼻子决定颜值"的叙事，推动统一容貌内卷。中国已成为全球鼻整形手术量最高的国家之一。'},
+  {region:'唇/口周',aesthetic:'唇部审美经历了时代性转向——数十年前流行薄唇，当下偏爱饱满M唇；东亚传统一度排斥厚唇，而欧美文化欣赏饱满唇形。',autonomy:'唇部作为高动态表情器官，多数人害怕永久手术破坏自然微笑，优先选择可逆注射。',social:'网红"微笑唇"模板普及，原生唇形被认为不够精致；唇部审美窄化加剧。'},
+  {region:'下颌/颌面',aesthetic:'东亚社会统一追求"尖窄翘下巴+清晰下颌线"，弱化方圆脸的自然特色——"V脸"审美与西方偏好的清晰Jawline形成文化对比。',autonomy:'颌面高风险永久手术（截骨、四级手术）仅少数人接受；多数人止步于注射和光电仪器改善。',social:'方圆脸被广泛贴上"脸大""臃肿"标签，社交媒体上的小脸滤镜加剧了下颌改造需求。韩国V脸审美的全球化输出推动了跨国医美旅游。'},
+  {region:'太阳穴/面颊',aesthetic:'"饱满无凹陷=年轻"的等式深入人心，原生颞部凹陷和面颊消瘦被归为"衰老缺陷"——但医学上面部凹陷受骨骼结构和遗传因素主导。',autonomy:'惧怕开刀疤痕者全部优先选择注射填充（玻尿酸/童颜针/少女针），排斥传统拉皮手术。',social:'年龄焦虑推动中青年通过填充掩盖自然衰老迹象——"抗衰"需求的起龄不断提前。'},
+  {region:'颈部',aesthetic:'颈部长期以来被审美所忽略，但近年来颈部衰老也开始被视为颜值"扣分点"——审美标准从面部向下延伸至颈部。',autonomy:'颈部暴露在外且皮肤薄，多数人排斥开刀疤痕，优先选择光电仪器和注射治疗。',social:'智能手机时代"低头族"颈纹年轻化趋势明显，镜头近距离拍摄放大了颈纹在社会互动中的可见度。'}
+];
+
+
+// ====== STATE ======
+let currentRegion = 'eye';
+let currentFilter = 'all';
+let currentMatFilter = 'all';
+let currentModule = 'face';
+let currentFaceMode = 'photo';
+
+// ====== INIT ======
+function init() {
+  renderProcedures();
+  renderSkinGrid();
+  renderMaterialTable();
+  renderEssays();
+  renderHumanitiesSummary();
+  updateFaceHighlight();
+}
+
+// ====== NAVIGATION ======
+function switchModule(mod, btn) {
+  currentModule = mod;
+  document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.module-content, .module-page').forEach(el => el.classList.remove('active'));
+  if (mod === 'face') {
+    document.getElementById('module-face').style.display = 'flex';
+  } else {
+    document.getElementById('module-face').style.display = 'none';
+    document.getElementById('module-' + mod).classList.add('active');
+  }
+  document.getElementById('navLinks').classList.remove('open');
+}
+function toggleMobileNav() { document.getElementById('navLinks').classList.toggle('open'); }
+
+// ====== FACE MAP ======
+function switchFaceMode(mode, btn) {
+  currentFaceMode = mode;
+  document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('facePhotoContainer').style.display = mode==='photo'?'block':'none';
+  document.getElementById('faceIllustrationContainer').style.display = mode==='illustration'?'block':'none';
+  updateFaceHighlight();
+}
+function selectRegion(regionId) {
+  currentRegion = regionId;
+  currentFilter = 'all';
+  document.querySelectorAll('#filterTags .filter-tag').forEach((t,i) => t.classList.toggle('active', i===0));
+  renderProcedures();
+  updateFaceHighlight();
+  document.getElementById('detailPanel').scrollTop = 0;
+}
+function updateFaceHighlight() {
+  document.querySelectorAll('.hotspot-zone').forEach(z => {
+    const isActive = z.getAttribute('data-region') === currentRegion;
+    z.classList.toggle('active', isActive);
+    if (currentFaceMode === 'photo') {
+      z.setAttribute('stroke-opacity', isActive?'1':'0');
+      z.setAttribute('opacity', isActive?'0.6':'0.35');
+    } else {
+      z.setAttribute('stroke-opacity', isActive?'0.6':'0');
+    }
+  });
+}
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('#filterTags .filter-tag').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderProcedures();
+}
+
+// ====== RENDER PROCEDURES ======
+function renderProcedures() {
+  const region = faceData[currentRegion];
+  document.getElementById('regionName').textContent = region.emoji + ' ' + region.name;
+  document.getElementById('regionDesc').textContent = region.desc;
+  document.getElementById('humJumpBtn').textContent = '🧠 查看' + region.name + '人文观察 →';
+
+  let procedures = region.procedures;
+  if (currentFilter !== 'all') procedures = procedures.filter(p => p.category === currentFilter);
+  document.getElementById('procedureCount').textContent = '共 ' + procedures.length + ' 个项目';
+
+  document.getElementById('procedureCards').innerHTML = procedures.map(p => {
+    const bc = p.category==='surgery'?'badge-surgery':p.category==='injection'?'badge-injection':'badge-dermatology';
+    const bt = p.category==='surgery'?'美容外科 🔴':p.category==='injection'?'微创注射 🟢':'美容皮肤科 🟡';
+    const mh = p.materials.map(m => '<span class="material-tag">'+m.name+(m.brands.length?' — '+m.brands.join(' / '):'')+'</span>').join('');
+    return `<div class="procedure-card" id="card-${p.id}">
+      <div class="card-header" onclick="toggleCard('${p.id}')">
+        <div class="card-title-area"><div class="card-name">${p.name}</div><div class="card-desc">${p.desc}</div></div>
+        <span class="card-badge ${bc}">${bt}</span><span class="card-expand-icon">▾</span>
+      </div>
+      <div class="card-body">
+        ${mh?`<div class="card-section"><div class="card-section-title">📋 材料</div><div class="material-tags">${mh}</div></div>`:''}
+        <div class="card-section"><div class="info-row"><div class="info-item"><span class="info-icon">⏱️</span><span class="info-label">维持时长:</span><span class="info-value">${p.duration}</span></div><div class="info-item"><span class="info-icon">💰</span><span class="info-label">价格区间:</span><span class="info-value">${p.priceRange}</span></div></div></div>
+        <div class="card-section"><div class="card-section-title">⚠️ 主要风险</div><div class="risk-text">${p.risks.map(r=>'• '+r).join('<br>')}</div></div>
+        ${p.feedback?`<div class="card-section"><div class="card-section-title">💬 用户反馈</div><div class="feedback-grid"><div class="feedback-dim physical"><div class="feedback-dim-title">🟢 生理体感</div><div class="feedback-dim-text">${p.feedback.physical}</div></div><div class="feedback-dim expectation"><div class="feedback-dim-title">🟡 效果落差</div><div class="feedback-dim-text">${p.feedback.expectation}</div></div><div class="feedback-dim cost"><div class="feedback-dim-title">🔴 成本对比</div><div class="feedback-dim-text">${p.feedback.cost}</div></div></div></div>`:''}
+        ${p.humanities?`<div class="card-section"><div class="humanities-block"><div class="humanities-title">🧠 人文观察</div><div class="humanities-text"><strong>审美建构：</strong>${p.humanities.aesthetic}<br><br><strong>身体自主：</strong>${p.humanities.autonomy}<br><br><strong>社会环境：</strong>${p.humanities.social}${p.humanities.refs?'<div class="humanities-ref">📚 参考文献：'+p.humanities.refs.join('；')+'</div>':''}</div></div></div>`:''}
+      </div></div>`;
+  }).join('');
+}
+function toggleCard(id) { document.getElementById('card-'+id).classList.toggle('expanded'); }
+
+// ====== RENDER SKIN ======
+function renderSkinGrid() {
+  document.getElementById('skinGrid').innerHTML = skinData.map((s,i) => `<div class="skin-card" id="skin-card-${i}">
+    <div class="skin-card-header" onclick="toggleSkinCard(${i})"><div><div class="skin-card-title">${s.name}</div><div class="skin-card-subtitle">${s.problem}</div></div><span class="skin-card-arrow">▾</span></div>
+    <div class="skin-card-body"><div class="skin-card-desc"><strong>🔍 成因：</strong>${s.cause}</div>
+    <div class="card-section-title">💊 治疗方案</div><div class="skin-card-treatments">${s.treatments.map(t=>'<span class="skin-treatment-tag">'+t.name+'｜'+t.duration+'｜'+t.price+'</span>').join('')}</div>
+    ${s.treatments.map(t=>'<div style="font-size:0.8rem;color:var(--text-dim);margin:2px 0 0 8px;line-height:1.4;">• <strong>'+t.name+'</strong>（'+(t.category==='injection'?'微创注射':t.category==='surgery'?'美容外科':'美容皮肤科')+'）：'+t.desc+' — '+t.duration+' — '+t.price+'</div>').join('')}
+    <div class="skin-feedback"><div class="card-section-title">💬 用户反馈</div><div class="skin-fb-item"><strong>🟢 生理体感：</strong>${s.feedback.physical}</div><div class="skin-fb-item"><strong>🟡 效果预期：</strong>${s.feedback.expectation}</div><div class="skin-fb-item"><strong>🔴 成本分析：</strong>${s.feedback.cost}</div></div></div></div>`).join('');
+}
+function toggleSkinCard(i) { document.getElementById('skin-card-'+i).classList.toggle('expanded'); }
+function activateSkinCard(skinId) {
+  const idx = skinData.findIndex(s => s.id === skinId);
+  if (idx===-1) return;
+  if (currentModule!=='skin') {
+    currentModule='skin';
+    document.querySelectorAll('.nav-links button').forEach(b=>b.classList.remove('active'));
+    const sb=document.querySelector('[data-module="skin"]'); if(sb)sb.classList.add('active');
+    document.querySelectorAll('.module-content,.module-page').forEach(el=>el.classList.remove('active'));
+    document.getElementById('module-face').style.display='none';
+    document.getElementById('module-skin').classList.add('active');
+  }
+  const card=document.getElementById('skin-card-'+idx);
+  if(card){card.classList.add('expanded');setTimeout(()=>{card.scrollIntoView({behavior:'smooth',block:'center'});card.style.boxShadow='0 0 30px rgba(108,99,255,0.3)';setTimeout(()=>{card.style.boxShadow=''},2000)},150)}
+}
+
+// ====== RENDER MATERIALS ======
+function renderMaterialTable(filter) {
+  filter = filter || currentMatFilter;
+  const data = filter==='all'?materialsData:materialsData.filter(m=>m.category===filter);
+  const cn = c=>({injectable:'注射填充',implant:'外科植入',adjuvant:'辅助药剂',topical:'外用化学',device:'光电耗材'})[c]||c;
+  const rc = r=>r.includes('完全可逆')||r.includes('代谢排出')?'yes':r.includes('半可逆')?'semi':'no';
+  document.getElementById('materialCards').innerHTML = data.map((m,i)=>`<div class="material-card" id="mat-card-${i}">
+    <div class="material-card-header" onclick="toggleMatCard(${i})"><div class="material-card-name">${m.name}</div><div class="material-card-meta"><span class="material-card-cat">${cn(m.category)}</span><span class="material-card-rev ${rc(m.reversible)}">${rc(m.reversible)==='yes'?'可逆':rc(m.reversible)==='semi'?'半可逆':'不可逆'}</span><span class="material-card-expand">▾</span></div></div>
+    <div class="material-card-body"><div class="mat-detail-grid">
+      <div class="mat-detail-full"><div class="mat-detail-label">🧬 核心原理</div><div class="mat-detail-value">${m.principle}</div></div>
+      <div class="mat-detail-full"><div class="mat-detail-label">🏷️ 可逆性说明</div><div class="mat-detail-value">${m.reversible}</div></div>
+      <div><div class="mat-detail-label">🏭 合规品牌</div><div class="mat-detail-value">${m.brands}</div></div>
+      <div><div class="mat-detail-label">⏱️ 维持时长</div><div class="mat-detail-value">${m.duration}</div></div>
+      <div class="mat-detail-full"><div class="mat-detail-label">✅ 适配部位 & 项目</div><div class="mat-detail-value">${m.sites}</div></div>
+      ${m.contraindications?`<div class="mat-detail-full"><div class="mat-detail-label">🚫 禁用部位</div><div class="mat-detail-value contra">${m.contraindications}</div></div>`:''}
+      <div><div class="mat-detail-label">👍 优点</div><div class="mat-detail-value pros">${m.pros}</div></div>
+      <div><div class="mat-detail-label">👎 缺点</div><div class="mat-detail-value cons">${m.cons}</div></div>
+    </div></div></div>`).join('');
+}
+function toggleMatCard(i) { document.getElementById('mat-card-'+i).classList.toggle('expanded'); }
+function setMatFilter(filter, btn) {
+  currentMatFilter = filter;
+  document.querySelectorAll('#materialFilters .filter-tag').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMaterialTable(filter);
+}
+
+// ====== RENDER HUMANITIES ======
+function renderEssays() {
+  document.getElementById('essayGrid').innerHTML = humanitiesEssays.map((e,i)=>`<div class="essay-card" id="essay-card-${i}">
+    <div class="skin-card-header" onclick="toggleEssayCard(${i})" style="padding:0;"><div><div style="display:flex;align-items:center;gap:12px;"><div class="essay-card-num">${e.num}</div><div class="essay-card-title">${e.title}</div></div></div><span class="skin-card-arrow">▾</span></div>
+    <div class="skin-card-body"><div class="essay-card-desc">${e.desc}</div><div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">${e.themes.map(t=>'<span class="material-tag">'+t+'</span>').join('')}</div></div></div>`).join('');
+}
+function toggleEssayCard(i) { document.getElementById('essay-card-'+i).classList.toggle('expanded'); }
+
+function renderHumanitiesSummary() {
+  const rid = r=>({'眼部':'eye','鼻部':'nose','唇/口周':'lip','下颌/颌面':'jaw','太阳穴/面颊':'temple','颈部':'neck'})[r]||'';
+  document.getElementById('humanitiesSummary').innerHTML = humanitiesByRegion.map((h,i)=>{
+    let ah = '<strong>审美建构：</strong>'+h.aesthetic;
+    if (h.region==='眼部') ah += ' <span class="clickable-aesthetic" onclick="event.stopPropagation();openEyeEvolution()">🔍 点击查看眼部审美演变史</span>';
+    else if (h.region==='鼻部') ah += ' <span class="clickable-aesthetic" onclick="event.stopPropagation();openNoseEvolution()">🔍 点击查看鼻部审美演变史</span>';
+    else if (h.region==='唇/口周') ah += ' <span class="clickable-aesthetic" onclick="event.stopPropagation();openLipEvolution()">🔍 点击查看唇部审美演变史</span>';
+    else if (h.region==='下颌/颌面') ah += ' <span class="clickable-aesthetic" onclick="event.stopPropagation();openJawEvolution()">🔍 点击查看下颌审美演变史</span>';
+    else if (h.region==='太阳穴/面颊') ah += ' <span class="clickable-aesthetic" onclick="event.stopPropagation();openTempleEvolution()">🔍 点击查看太阳穴&面颊审美演变史</span>';
+    return '<div class="hum-card expanded" id="hum-'+rid(h.region)+'"><div class="hum-card-header" onclick="toggleHumCard('+i+')"><div class="hum-card-title">'+h.region+'</div><span class="hum-card-arrow">▾</span></div><div class="hum-card-body"><p>'+ah+'</p><p><strong>身体自主：</strong>'+h.autonomy+'</p><p><strong>社会环境：</strong>'+h.social+'</p></div></div>';
+  }).join('');
+}
+function toggleHumCard(i) { const cards=document.querySelectorAll('.hum-card'); if(cards[i])cards[i].classList.toggle('expanded'); }
+
+function jumpToHumanities() {
+  currentModule='humanities';
+  document.querySelectorAll('.nav-links button').forEach(b=>b.classList.remove('active'));
+  const hb=document.querySelector('[data-module="humanities"]'); if(hb)hb.classList.add('active');
+  document.querySelectorAll('.module-content,.module-page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('module-face').style.display='none';
+  document.getElementById('module-humanities').classList.add('active');
+  const rid={'eye':'eye','nose':'nose','lip':'lip','jaw':'jaw','temple':'temple','neck':'neck'};
+  const card=document.getElementById('hum-'+rid[currentRegion]);
+  if(card){card.classList.add('expanded');setTimeout(()=>{card.scrollIntoView({behavior:'smooth',block:'center'});card.style.boxShadow='0 0 24px rgba(233,69,96,0.35)';card.style.borderColor='var(--red)';setTimeout(()=>{card.style.boxShadow='';card.style.borderColor=''},2500)},200)}
+}
+
+// ====== MODAL FUNCTIONS ======
+function openEyeEvolution(){document.getElementById('eyeEvolutionModal').classList.add('open');document.body.style.overflow='hidden'}
+function closeEyeEvolution(e){if(e&&e.target!==document.getElementById('eyeEvolutionModal'))return;document.getElementById('eyeEvolutionModal').classList.remove('open');document.body.style.overflow=''}
+function openNoseEvolution(){document.getElementById('noseEvolutionModal').classList.add('open');document.body.style.overflow='hidden'}
+function closeNoseEvolution(e){if(e&&e.target!==document.getElementById('noseEvolutionModal'))return;document.getElementById('noseEvolutionModal').classList.remove('open');document.body.style.overflow=''}
+function openLipEvolution(){document.getElementById('lipEvolutionModal').classList.add('open');document.body.style.overflow='hidden'}
+function closeLipEvolution(e){if(e&&e.target!==document.getElementById('lipEvolutionModal'))return;document.getElementById('lipEvolutionModal').classList.remove('open');document.body.style.overflow=''}
+function openJawEvolution(){document.getElementById('jawEvolutionModal').classList.add('open');document.body.style.overflow='hidden'}
+function closeJawEvolution(e){if(e&&e.target!==document.getElementById('jawEvolutionModal'))return;document.getElementById('jawEvolutionModal').classList.remove('open');document.body.style.overflow=''}
+function openTempleEvolution(){document.getElementById('templeEvolutionModal').classList.add('open');document.body.style.overflow='hidden'}
+function closeTempleEvolution(e){if(e&&e.target!==document.getElementById('templeEvolutionModal'))return;document.getElementById('templeEvolutionModal').classList.remove('open');document.body.style.overflow=''}
+
+// ====== BOOT ======
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
