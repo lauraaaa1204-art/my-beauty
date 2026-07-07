@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>面部医美百科 — 交互式医美科普平台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 
 /* ====== CSS Variables & Reset ====== */
@@ -817,6 +818,18 @@ a { color:var(--accent); text-decoration:none; }
 
 <script>
 
+// ====== SUPABASE ======
+const SUPABASE_URL='https://kmilvrhtycjihryqcmwm.supabase.co';
+const SUPABASE_KEY='sb_publishable_MZw5G1kGCa_fjDwpVzOoEg_eqiVtsA-';
+const sb=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+let sbCache={faceData:null,skinData:null,materialsData:null,essays:null,regions:null};
+async function loadSupabase(){if(!sb)return;try{const r=await Promise.all([sb.from('procedures').select('*'),sb.from('materials').select('*'),sb.from('skin_conditions').select('*'),sb.from('humanities_essays').select('*'),sb.from('humanities_regions').select('*')]);if(r[0].data?.length){const f={};const rn={eye:'眼部区域',nose:'鼻部区域',lip:'唇/口周区域',jaw:'下颌/颌面区域',temple:'太阳穴/面颊区域',neck:'颈部区域'};const em={eye:'👁️',nose:'👃',lip:'👄',jaw:'🦴',temple:'⛰️',neck:'🦒'};const co={eye:'#e94560',nose:'#ff6b35',lip:'#ff7b89',jaw:'#2ec4b6',temple:'#9b59b6',neck:'#4ea8de'};for(const rk of Object.keys(rn)){f[rk]={id:rk,name:rn[rk],emoji:em[rk],color:co[rk],desc:'',procedures:[]}}for(const p of r[0].data){if(f[p.region]){f[p.region].procedures.push({id:p.id,name:p.name,category:p.category,desc:p.description,materials:p.materials||[],duration:p.duration,priceRange:p.price_range,risks:p.risks||[],feedback:p.feedback||{},humanities:p.humanities||{}})}}sbCache.faceData=f}if(r[1].data?.length)sbCache.materialsData=r[1].data;if(r[2].data?.length)sbCache.skinData=r[2].data;if(r[3].data?.length)sbCache.essays=r[3].data;if(r[4].data?.length)sbCache.regions=r[4].data;console.log('SB loaded')}catch(e){console.log('SB fallback')}}
+function getFD(){return sbCache.faceData||faceData}
+function getSD(){return sbCache.skinData||skinData}
+function getMD(){return sbCache.materialsData||materialsData}
+function getEssays(){return sbCache.essays||humanitiesEssays}
+function getRegions(){return sbCache.regions||humanitiesByRegion}
+
 function t(k){const m={"card.materials":"材料","card.duration":"维持时长","card.price":"价格区间","card.risks":"主要风险","card.feedback":"用户反馈","card.physical":"生理体感","card.expectation":"效果落差","card.cost":"成本对比","card.humanities":"人文观察","card.aesthetic":"审美建构","card.autonomy":"身体自主","card.social":"社会环境","card.pros":"优点","card.cons":"缺点","card.principle":"核心原理","card.brands":"合规品牌","card.sites":"适配部位 & 项目","card.contra":"禁用部位","card.reversible":"可逆性说明","cat.surgeryBadge":"美容外科 🔴","cat.injectionBadge":"微创注射 🟢","cat.dermatologyBadge":"美容皮肤科 🟡","cat.surgery":"美容外科","cat.injection":"微创注射","cat.dermatology":"美容皮肤科","skin.cause":"成因","skin.treatments":"治疗方案"};return m[k]||k;}
 let lang="zh";
 const faceData = {
@@ -1547,7 +1560,8 @@ let currentModule = 'face';
 let currentFaceMode = 'photo';
 
 // ====== INIT ======
-function init() {
+async function init() {
+  await loadSupabase();
   renderProcedures();
   renderSkinGrid();
   renderMaterialTable();
@@ -1610,7 +1624,7 @@ function setFilter(filter, btn) {
 
 // ====== RENDER PROCEDURES ======
 function renderProcedures() {
-  const region = faceData[currentRegion];
+  const region = getFD()[currentRegion];
   document.getElementById('regionName').textContent = region.emoji + ' ' + region.name;
   document.getElementById('regionDesc').textContent = region.desc;
   document.getElementById('humJumpBtn').textContent = '🧠 查看' + region.name + '人文观察 →';
@@ -1641,7 +1655,7 @@ function toggleCard(id) { document.getElementById('card-'+id).classList.toggle('
 
 // ====== RENDER SKIN ======
 function renderSkinGrid() {
-  document.getElementById('skinGrid').innerHTML = skinData.map((s,i) => `<div class="skin-card" id="skin-card-${i}">
+  document.getElementById('skinGrid').innerHTML = getSD().map((s,i) => `<div class="skin-card" id="skin-card-${i}">
     <div class="skin-card-header" onclick="toggleSkinCard(${i})"><div><div class="skin-card-title">${s.name}</div><div class="skin-card-subtitle">${s.problem}</div></div><span class="skin-card-arrow">▾</span></div>
     <div class="skin-card-body"><div class="skin-card-desc"><strong>🔍 成因：</strong>${s.cause}</div>
     <div class="card-section-title">💊 治疗方案</div><div class="skin-card-treatments">${s.treatments.map(t=>'<span class="skin-treatment-tag">'+t.name+'｜'+t.duration+'｜'+t.price+'</span>').join('')}</div>
@@ -1650,7 +1664,7 @@ function renderSkinGrid() {
 }
 function toggleSkinCard(i) { document.getElementById('skin-card-'+i).classList.toggle('expanded'); }
 function activateSkinCard(skinId) {
-  const idx = skinData.findIndex(s => s.id === skinId);
+  const idx = getSD().findIndex(s => s.id === skinId);
   if (idx===-1) return;
   if (currentModule!=='skin') {
     currentModule='skin';
@@ -1667,7 +1681,7 @@ function activateSkinCard(skinId) {
 // ====== RENDER MATERIALS ======
 function renderMaterialTable(filter) {
   filter = filter || currentMatFilter;
-  const data = filter==='all'?materialsData:materialsData.filter(m=>m.category===filter);
+  const data = filter==='all'?getMD():getMD().filter(m=>m.category===filter);
   const cn = c=>({injectable:'注射填充',implant:'外科植入',adjuvant:'辅助药剂',topical:'外用化学',device:'光电耗材'})[c]||c;
   const rc = r=>r.includes('完全可逆')||r.includes('代谢排出')?'yes':r.includes('半可逆')?'semi':'no';
   document.getElementById('materialCards').innerHTML = data.map((m,i)=>`<div class="material-card" id="mat-card-${i}">
@@ -1693,7 +1707,7 @@ function setMatFilter(filter, btn) {
 
 // ====== RENDER HUMANITIES ======
 function renderEssays() {
-  document.getElementById('essayGrid').innerHTML = humanitiesEssays.map((e,i)=>`<div class="essay-card" id="essay-card-${i}">
+  document.getElementById('essayGrid').innerHTML = getEssays().map((e,i)=>`<div class="essay-card" id="essay-card-${i}">
     <div class="skin-card-header" onclick="toggleEssayCard(${i})" style="padding:0;"><div><div style="display:flex;align-items:center;gap:12px;"><div class="essay-card-num">${e.num}</div><div class="essay-card-title">${e.title}</div></div></div><span class="skin-card-arrow">▾</span></div>
     <div class="skin-card-body"><div class="essay-card-desc">${e.desc}</div><div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">${e.themes.map(t=>'<span class="material-tag">'+t+'</span>').join('')}</div></div></div>`).join('');
 }
@@ -1701,7 +1715,7 @@ function toggleEssayCard(i) { document.getElementById('essay-card-'+i).classList
 
 function renderHumanitiesSummary() {
   const rid = r=>({'眼部':'eye','鼻部':'nose','唇/口周':'lip','下颌/颌面':'jaw','太阳穴/面颊':'temple','颈部':'neck'})[r]||'';
-  document.getElementById('humanitiesSummary').innerHTML = humanitiesByRegion.map((h,i)=>{
+  document.getElementById('humanitiesSummary').innerHTML = getRegions().map((h,i)=>{
     let ah = '<strong>审美建构：</strong>'+h.aesthetic;
     if (h.region==='眼部') ah += ' <span class="clickable-aesthetic" onclick="event.stopPropagation();openEyeEvolution()">🔍 点击查看眼部审美演变史</span>';
     else if (h.region==='鼻部') ah += ' <span class="clickable-aesthetic" onclick="event.stopPropagation();openNoseEvolution()">🔍 点击查看鼻部审美演变史</span>';
