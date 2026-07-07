@@ -825,10 +825,22 @@ const sb=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
 let sbCache={faceData:null,skinData:null,materialsData:null,essays:null,regions:null};
 async function loadSupabase(){if(!sb)return;try{const r=await Promise.all([sb.from('procedures').select('*'),sb.from('materials').select('*'),sb.from('skin_conditions').select('*'),sb.from('humanities_essays').select('*'),sb.from('humanities_regions').select('*')]);if(r[0].data?.length){const f={};const rn={eye:'眼部区域',nose:'鼻部区域',lip:'唇/口周区域',jaw:'下颌/颌面区域',temple:'太阳穴/面颊区域',neck:'颈部区域'};const em={eye:'👁️',nose:'👃',lip:'👄',jaw:'🦴',temple:'⛰️',neck:'🦒'};const co={eye:'#e94560',nose:'#ff6b35',lip:'#ff7b89',jaw:'#2ec4b6',temple:'#9b59b6',neck:'#4ea8de'};for(const rk of Object.keys(rn)){f[rk]={id:rk,name:rn[rk],emoji:em[rk],color:co[rk],desc:'',procedures:[]}}for(const p of r[0].data){if(f[p.region]){f[p.region].procedures.push({id:p.id,name:p.name,category:p.category,desc:p.description,materials:p.materials||[],duration:p.duration,priceRange:p.price_range,risks:p.risks||[],feedback:p.feedback||{},humanities:p.humanities||{}})}}sbCache.faceData=f}if(r[1].data?.length)sbCache.materialsData=r[1].data;if(r[2].data?.length)sbCache.skinData=r[2].data;if(r[3].data?.length)sbCache.essays=r[3].data;if(r[4].data?.length)sbCache.regions=r[4].data;console.log('SB loaded')}catch(e){console.log('SB fallback')}}
 function getFD(){return sbCache.faceData||faceData}
-function getSD(){return sbCache.skinData||skinData}
-function getMD(){return sbCache.materialsData||materialsData}
-function getEssays(){return sbCache.essays||humanitiesEssays}
-function getRegions(){return sbCache.regions||humanitiesByRegion}
+function getEssays(){
+  if(sbCache.essays) return sbCache.essays.map(e=>({...e,desc:e.description||e.desc}));
+  return humanitiesEssays;
+}
+function getRegions(){
+  if(sbCache.regions) return sbCache.regions.map(r=>({...r,social:r.social_context||r.social}));
+  return humanitiesByRegion;
+}
+function getSD(){
+  if(sbCache.skinData) return sbCache.skinData;
+  return skinData;
+}
+function getMD(){
+  if(sbCache.materialsData) return sbCache.materialsData;
+  return materialsData;
+}
 
 function t(k){const m={"card.materials":"材料","card.duration":"维持时长","card.price":"价格区间","card.risks":"主要风险","card.feedback":"用户反馈","card.physical":"生理体感","card.expectation":"效果落差","card.cost":"成本对比","card.humanities":"人文观察","card.aesthetic":"审美建构","card.autonomy":"身体自主","card.social":"社会环境","card.pros":"优点","card.cons":"缺点","card.principle":"核心原理","card.brands":"合规品牌","card.sites":"适配部位 & 项目","card.contra":"禁用部位","card.reversible":"可逆性说明","cat.surgeryBadge":"美容外科 🔴","cat.injectionBadge":"微创注射 🟢","cat.dermatologyBadge":"美容皮肤科 🟡","cat.surgery":"美容外科","cat.injection":"微创注射","cat.dermatology":"美容皮肤科","skin.cause":"成因","skin.treatments":"治疗方案"};return m[k]||k;}
 let lang="zh";
